@@ -1,0 +1,1203 @@
+/*
+P.E.G [Parsing Expression Grammar] library for the Falcon PL 0.9.x.
+
+Original version by Chris Double in JavaScript.
+See his post here for more details:
+See http://www.bluishcoder.co.nz/2007/10/javascript-parser-combinators.html
+Chris then build a Factor PEG lib wich is now used inside the Factor PL.
+
+I saw a nice subject in the Deutsch Python forum, but seems like it has
+never been read:
+http://www.python-forum.de/topic-13554.html?sid=bf474f4b57e49fa617023529a8187d16
+
+Copyright (C) 2009 Kibleur Christophe.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+DEVELOPERS AND CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/*
+================================================================================
+                            GLOBALS
+================================================================================
+*/
+
+memoize = true
+parser_id = 0
+
+/*
+================================================================================
+                            HELPER FUNCTIONS
+================================================================================
+*/
+function identity(x)
+    return x
+end
+
+function foldl(f, initial, seq)
+    for el in seq
+        initial = f(initial, el)
+    end
+    return initial
+end
+
+function ps(text)
+    return ParseState(text)
+end
+
+// 'r' is the remaining string to be parsed.
+// 'matched' is the portion of the string that
+//  was successfully matched by the parser.
+// 'ast' is the AST returned by the successfull parse.
+function make_result(r, matched, ast)
+    return [ "remaining" => r, "matched" => matched, "ast" => ast ]
+end
+
+// To convert string literals to token parsers
+// and perform other implicit parser conversions.
+function toParser(p)
+    // String type is 20
+    if typeOf(p) == 8
+        return Token(p)
+    else
+        return p
+    end
+end
+
+// Given a parser that produces an array as an ast, returns a
+// parser that produces an ast with the array joined by a separator.
+function join_action(p, sep)
+    f = function (ast)
+        // return ast.join(sep)
+        return joinStr(ast, sep)
+    end
+
+    return Action(p, f)
+end
+
+// Given an ast of the form [ Expression, [ a, b, ...] ], convert to
+// [ [ [ Expression [ a ] ] b ] ... ]
+// This is used for handling left recursive entries in the grammar. e.g.
+// MemberExpression:
+//   PrimaryExpression
+//   FunctionExpression
+//   MemberExpression [ Expression ]
+//   MemberExpression . Identifier
+//   new MemberExpression Arguments
+function left_factor(ast)
+    f = function(v, action)
+        return [ v, action ]
+    end
+    return foldl(f,ast[0],ast[1])
+end
+
+// Return a parser that left factors the ast result of the original
+// parser.
+function left_factor_action(p)
+    return Action(p, left_factor)
+end
+
+// 'end_p' is a parser that is successful if the input string
+// is empty (ie. end of parse).
+function end_p(state)
+    if state.length == 0
+        return make_result(state, nil, nil)
+    else
+        return false
+    end
+end
+
+// 'nothing_p' is a parser that always fails.
+function nothing_p(state)
+    return false
+end
+
+// A parser combinator that ensures that the given parser succeeds but
+// ignores its result. This can be useful for parsing literals that you
+// don't want to appear in the ast. eg:
+// sequence(expect("("), Number, expect(")")) => ast: Number
+function expect(p)
+    p = toParser(p)
+    f = function(ast)
+        return nil
+    end
+    return Action(p, f)
+end
+
+function chain(p, s, f)
+    p = toParser(p)
+    g = function(ast)
+        return [ast[0]] + ast[1]
+        // return [ast[0] + ast[1]]
+    end
+    return Action( Seq([p, Repeat0( Action( Seq([s, p]), f))]), g)
+end
+
+// A parser combinator to do left chaining and evaluation.
+// Like chain, it expects a parser for an item and one for a seperator.
+// The separator parser's AST result should be a function of the form:
+// function(lhs,rhs) { return x; }
+// Where 'x' is the result of applying some operation to the lhs and rhs
+// AST's from the item parser.
+function chainl(p, s)
+    p = toParser(p)
+
+    h = function(v, action)
+        return action[0](v, action[1])
+    end
+
+    g = function(ast)
+        printl("chainl AST: ",inspect(ast))
+        return foldl(h, ast[0], ast[1])
+    end
+    return Action( Seq([p, Repeat0(Seq([s, p]))] ), g)
+end
+
+// A parser combinator that returns a parser that matches lists of things.
+// The parser to match the list item and the parser to match the seperator
+// need to be provided. The AST is the array of matched items.
+function list(p, s)
+    f = function (ast)
+        return ast[1]
+    end
+
+    return chain(p, s, f)
+end
+
+// Like list, but ignores whitespace between individual parsers.
+function wList(ps)
+    parsers = []
+    for p in ps
+	    parsers += Whitespace(p)
+    end
+    return list(nil, parsers)
+end
+
+// A parser that always returns a zero length match
+function epsilon_p(state)
+    return make_result(state, "", nil)
+end
+
+// ==== Special functions for output
+function prettyPrint(t,text)
+    res = t.parse(text)
+    printl("String to match: \n>>", text.input,"<<\n")
+    printl("===================\n")
+    printl("With parser:\n\t", t.toString())
+    printl("=============\n")
+    if res
+        printl("Remaining: >>\n\t",res["remaining"].toString(), "<<")
+        printl("Matched: >>\n\t",res["matched"].toString(), "<<")
+        printl("Ast: >>",inspect(res["ast"]), "<<")
+        printl("\n")
+    else
+        printl("Matched nothing")
+        printl("\n")
+    end
+end
+
+function joinStr(arr, sep)
+    res = ""
+    if arr.len() > 0
+        for el in arr
+            formiddle:res += (el + sep)
+            forlast: res += el
+        end
+    else
+        res = ""
+    end
+    return res
+end
+
+// Jonnymind's contribution to print nested arrays
+function prarr( arr, level )
+    if not level: level = 0
+    if arr == []
+        return ""
+    end
+    for elem in arr
+        > elem,elem.typeId(),"--",ArrayType
+        if elem.typeId() in [9] : prarr( elem, level+1 )
+        if elem.typeId() in [0] : return ""
+        >> strReplicate( " ", level )
+        if elem : > elem.toString()
+    end
+end
+/*
+================================================================================
+                            PARSER CLASSES
+================================================================================
+*/
+
+// The ParserState Class is used to store and manipulate the
+// state within the parsing process
+class ParseState(input, index)
+    input = input
+    index = index ? index : 0
+    cache = [=>]
+    length = nil
+
+    init
+        self.length = self.input.len() - self.index
+    end
+
+    function From(index)
+        r = ParseState(self.input, self.index + index)
+        r.cache = self.cache
+        r.length = self.length - index
+        return r
+    end
+
+    function substring(start, theend)
+        if theend
+            return self.input[start + self.index: theend + self.index]
+        else
+            if start + self.index != self.length + self.index
+                return self.input[start + self.index: self.length + self.index]
+            else
+                return ""
+            end
+        end
+    end
+
+    function trimLeft()
+        return ParseState(strFrontTrim(self.substring(0)))
+    end
+
+    function at(index)
+        return self.input[self.index + index]
+    end
+
+    function toString()
+        return 'PS"' + self.substring(0) + '"'
+    end
+
+    function getCached(pid)
+        global memoize
+        if not memoize
+            return false
+        end
+        p = dictGet(self.cache, pid)
+        if p
+            return p[self.index]
+        else
+            return false
+        end
+    end
+
+    function putCached(pid, cached)
+        global memoize
+        if memoize
+            return false
+        end
+        p = dictGet(self.cache, pid)
+
+        if p
+            p[self.index] = cached
+        else
+            p = [=>]
+            self.cache[pid] = [=>]
+            p[self.index] = cached
+        end
+    end
+
+end
+
+// Token is a parser combinator that given a string, returns a parser
+// that parses that string value. The AST contains the string that was parsed.
+class Token(s)
+    s = s
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+    end
+
+    function toString()
+        return @"Token $self.s"
+    end
+
+    // parse a ParserState instance
+    // returns nil or a dic like
+    // [ "remaining" => ParserState, "matched" => string, "ast" => string ]
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        r = state.length >= self.s.len() and state.substring(0,self.s.len()) == self.s
+
+        if r
+            cached = [ "remaining" => state.From(self.s.len()), "matched" => self.s, "ast" => self.s ]
+        else
+            cached = false
+        end
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Char is like Token but for a single character. Returns a parser that given
+// a string containing a single character, parses that character value.
+class Char(c)
+    c = c
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+    end
+
+    function toString()
+        return @"Char $self.c"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        r = state.length >= 1 and state.at(0) == self.c
+
+        if r
+            cached = ["remaining" => state.From(1), "matched" => self.c, "ast" => self.c]
+        else
+            cached = false
+        end
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Range is a parser combinator that returns a single character parser
+// (similar to 'ch'). It parses single characters that are in the inclusive
+// range of the 'lower' and 'upper' bounds ("a" to "z" for example).
+class Range(lower, upper)
+    lower = lower
+    upper = upper
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+    end
+
+    function toString()
+        return @"Token $self.lower $self.upper"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        if state.length < 1
+            cached = false
+        else
+            ch = state.at(0)
+            if ch >= self.lower and ch <= self.upper
+                cached = ["remaining" => state.From(1), "matched" => ch, "ast" => ch]
+            else
+                cached = false
+            end
+        end
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Whitespace parser combinator that takes a parser as input and
+// returns a parser that skips whitespace before applying parser.
+class Whitespace(p)
+    p = toParser(p)
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+    end
+
+    function toString()
+        return @"Whitespace $self.p.toString()"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = self.p.parse(state.trimLeft())
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Action is a parser combinator that passes the AST generated from the
+// parser 'p' to the function 'f'.
+// The result of 'f' is used as the AST in the result.
+class Action(p, f)
+    p = toParser(p)
+    f = f
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+    end
+
+    function toString()
+        return @"Action $self.p $self.f"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        x = self.p.parse(state)
+        if x
+            x["ast"] = self.f(x["ast"])
+            cached = x
+        else
+            cached = false
+        end
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Negate will negate a single character parser. So given 'ch("a")' it will
+// successfully parse any character except for 'a'. Or 'Negate(Range("a", "z"))'
+// will successfully parse anything except the lowercase characters a-z.
+class Negate(p)
+    p = toParser(p)
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+    end
+
+    function toString()
+        return @"Negate $self.p"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        if state.length >= 1
+            r = self.p.parse(state)
+            if not r
+                cached =  make_result(state.From(1), state.at(0), state.at(0))
+            else
+                cached = false
+            end
+        else
+            cached = false
+        end
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Seq is a parser combinator that processes a number of parsers in sequence.
+// It can take any number of arguments, each one being a parser.
+// The parser that 'sequence' returns succeeds if all the parsers
+// in the sequence succeeds. It fails if any of them fail.
+class Seq(ps)
+    parsers = ps
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        t = []
+        for s in self.parsers
+            t += toParser(s)
+        end
+        self.parsers = t
+    end
+
+    function toString()
+        return @ "Seq $self.parsers"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        ast = []
+        matched = ""
+        i = 0
+        for parser in self.parsers
+
+            result = parser.parse(state)
+            if result
+                state = result["remaining"]
+                if result["ast"] != nil
+                    ast += [result["ast"]]
+                    matched += result["matched"]
+                end
+            else
+                break
+            end
+            i += 1
+        end
+
+        if i == self.parsers.len()
+            cached = make_result(state, matched, ast)
+        else
+            cached = false
+        end
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Like Seq, but ignores whitespace between individual parsers.
+class wSeq(ps)
+    parsers = ps
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        t = []
+        for s in self.parsers
+            t += Whitespace(toParser(s))
+        end
+        self.parsers = t
+    end
+
+    function toString()
+        return @"wSeq $self.parsers"
+    end
+
+    function parse(text)
+        p = Seq(self.parsers)
+        return p.parse(text)
+    end
+
+end
+
+// Choice is a parser combinator that provides a choice between other parsers.
+// It takes any number of parsers as arguments and returns a parser that will
+// try each of the given parsers in order. The first one that succeeds results
+// in a successfull parse. It fails if all parsers fail.
+class Choice(ps)
+    parsers = ps
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        t = []
+        for s in self.parsers
+            t += toParser(s)
+        end
+        self.parsers = t
+    end
+
+    function toString()
+        return @"Choice $self.parsers"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        i = 0
+        for parser in self.parsers
+            result = parser.parse(state)
+            if result
+                break
+            end
+            i += 1
+        end
+
+        if i == self.parsers.len()
+            cached = false
+        else
+            cached = result
+        end
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// butNot is a parser combinator that takes two parsers, 'p1' and 'p2'.
+// It returns a parser that succeeds if 'p1' matches and 'p2' does not, or
+// 'p1' matches and the matched text is longer that p2's.
+// Useful for things like: butnot(IdentifierName, ReservedWord)
+class butNot(p1,p2)
+    p1 = p1
+    p2 = p2
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        self.p1 = toParser(self.p1)
+        self.p2 = toParser(self.p2)
+    end
+
+    function toString()
+        return @"butNot $self.p1 $self.p2"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        br = self.p2.parse(state)
+
+        if not br
+            cached = self.p1.parse(state)
+        else
+            ar = self.p1.parse(state)
+            if ar
+                if ar["matched"].len() > br["matched"].len()
+                    cached = ar
+                else
+                    cached = false
+                end
+            else
+                cached = false
+            end
+        end
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Difference is a parser combinator that takes two parsers, 'p1' and 'p2'.
+// It returns a parser that succeeds if 'p1' matches and 'p2' does not. If
+// both match then if p2's matched text is shorter than p1's it is successfull.
+class Difference(p1,p2)
+    p1 = p1
+    p2 = p2
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        self.p1 = toParser(self.p1)
+        self.p2 = toParser(self.p2)
+    end
+
+    function toString()
+        return @"Difference $self.p1 $self.p2"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        br = self.p2.parse(state)
+        if not br
+            cached = self.p1.parse(state)
+        else
+            ar = self.p1.parse(state)
+            if ar["matched"].len() >= br["matched"].len()
+                cached = br
+            else
+                cached = ar
+            end
+        end
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Xor is a parser combinator that takes two parsers, 'p1' and 'p2'.
+// It returns a parser that succeeds if 'p1' or 'p2' match but fails if
+// they both match.
+class Xor(p1, p2)
+    p1 = p1
+    p2 = p2
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        self.p1 = toParser(self.p1)
+        self.p2 = toParser(self.p2)
+    end
+
+    function toString()
+        return @"Xor $self.p1 $self.p2"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        ar = self.p1.parse(state)
+        br = self.p2.parse(state)
+        if ar and br
+            cached = false
+        else
+            if ar
+                cached = ar
+            elif br
+                cached = br
+            else
+                cached = false
+            end
+        end
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Repeat0 is a parser combinator that takes one parser.
+// It returns a parser that looks for zero or more matches of the original parser.
+class Repeat0(p)
+    parser = p
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        self.parser = toParser(self.parser)
+    end
+
+    function toString()
+        return @"Repeat0 $self.parser"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        ast = []
+        matched = ""
+
+        while result = self.parser.parse(state)
+            ast += [result["ast"]]
+            matched += result["matched"]
+            if result["remaining"].index == state.index
+                break
+            end
+            state = result["remaining"]
+        end
+
+        cached = make_result(state, matched, ast)
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Repeat1 is a parser combinator that takes one parser.
+// It returns a parser that looks for one or more matches
+// of the original parser.
+class Repeat1(p)
+    parser = p
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        self.parser = toParser(self.parser)
+    end
+
+    function toString()
+        return @"Repeat1 $self.parser"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        ast = []
+        matched = ""
+        result = self.parser.parse(state)
+        if not result
+            cached = false
+        else
+            while result
+                ast += [result["ast"]]
+                matched += result["matched"]
+                if result["remaining"].index == state.index
+                    break
+                end
+                state = result["remaining"]
+                result = self.parser.parse(state)
+            end
+        end
+
+        cached = make_result(state, matched, ast)
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Optional is a parser combinator that takes one parser.
+// It returns a parser that matches zero or one matches of the original parser.
+class Optional(p)
+    parser = p
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        self.parser = toParser(self.parser)
+    end
+
+    function toString()
+        return @"Optional $self.parser"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        r = self.parser.parse(state)
+        cached = r or make_result(state, "", false)
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Semantic allows attaching of a function anywhere in the grammer.
+// If the function returns true then parse succeeds otherwise it fails.
+// Can be used for testing if a symbol is in the symbol table, etc.
+class Semantic(f)
+    f = f
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+    end
+
+    function toString()
+        return @"Semantic $self.f"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        cached = self.f() ? make_result(state, "", nil) : false
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// The And predicate asserts that a certain conditional
+// syntax is satisfied before evaluating another production. Eg:
+// Seq(And("0"), oct_p)
+// (if a leading zero, then parse octal)
+// It succeeds if 'p' succeeds and fails if 'p' fails. It never
+// consume any input however, and doesn't put anything in the resulting
+// AST.
+class And(p)
+    parser = p
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        self.parser = toParser(self.parser)
+    end
+
+    function toString()
+        return @"And $self.parser"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        r = self.parser.parse(state)
+	    cached = r ? make_result(state, "", nil) : false
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+// Not is the opposite of And. It fails if 'p' succeeds and succeeds if
+// 'p' fails. It never consumes any input. This combined with 'and' can
+// be used for 'lookahead' and disambiguation of cases.
+//
+// Compare:
+// Seq("a",Choice("+","++"),"b")
+//   parses a+b
+//   but not a++b because the + matches the first part and peg's don't
+//   backtrack to other choice options if they succeed but later things fail.
+//
+// Seq("a",Choice(Seq("+", Not("+")),"++"),"b")
+//    parses a+b
+//    parses a++b
+//
+class Not(p)
+    parser = p
+    pid = nil
+
+    init
+        global parser_id
+        self.pid = ++parser_id
+        self.parser = toParser(self.parser)
+    end
+
+    function toString()
+        return @"Not $self.parser"
+    end
+
+    function parse(state)
+        savedState = state
+        cached = savedState.getCached(self.pid)
+        if cached
+            return cached
+        end
+
+        if cached == self.parser.parse(state):  make_result(state, "", nil)
+        // cached == self.parser.parse(state) ? false : make_result(state, "", nil)
+
+        savedState.putCached(self.pid, cached)
+        return cached
+    end
+end
+
+/*
+================================================================================
+                            MAIN PROGRAMM
+================================================================================
+*/
+class Forward()
+    fwd = nil
+
+    function set(p)
+        self.fwd = p
+    end
+
+    function parse( text )
+        return self.fwd.parse(text)
+    end
+end
+
+/*
+================================================================================
+                            MAIN PROGRAMM
+================================================================================
+*/
+
+function makeHeader(title,lev)
+    return @"<h$lev>$title</h$lev>\n"
+end
+
+function makeH1(ast)
+    res = joinStr(ast,"")
+    return makeHeader(res,"1")
+end
+
+function makeH2(ast)
+    res = joinStr(ast,"")
+    return makeHeader(res,"2")
+end
+
+function makeH3(ast)
+    res = joinStr(ast,"")
+    return makeHeader(res,"3")
+end
+
+function makeH4(ast)
+    res = joinStr(ast,"")
+    return makeHeader(res,"4")
+end
+
+function makeText(ast)
+    res = joinStr(ast,"")
+    return res
+end
+
+function makePara(ast)
+    res = ""
+    for el in ast
+        res = joinStr(el,"")
+    end
+    if res == ""
+        return nil
+    else
+        return @"<p>$res</p>\n"
+    end
+end
+
+mystring = '
+Falcon is...an Open Source, simple, fast and powerful programming language.
+
+Easy to learn and to feel comfortable with, and a scripting
+engine ready to empower mission-critical multithreaded applications.
+
+=First header=
+
+Falcon provides six integrated programming paradigms: procedural,
+object oriented, prototype oriented, functional, tabular and message oriented.
+
+And you dont have to master all of them;
+you just need to pick the ingredients you prefer,
+and let the code to follow your inspiration.
+
+==Second header==
+
+Another media is following Falcon from now on: ComputerWorld Australia has
+published a rich interview with Falcon author on its site.
+
+===Third header===
+
+Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse!!!
+
+HERE IT IS
+cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
+non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+'
+
+test = ps(mystring)
+
+// New line
+W_nl = Action( Choice(["\r\n" , "\r" , "\n" ]), { x => "\n"} )
+
+// White spaces
+W_ws = Choice([ ' ', "\t", W_nl ] )
+
+// Heading1
+W_head1 = Seq( [expect("="), Action(Repeat1( Negate("=") ), makeH1), expect("="), expect(W_nl)]  )
+
+// Heading2
+W_head2 = Seq( [expect("=="), Action(Repeat1( Negate("=") ), makeH2), expect("=="), expect(W_nl)]  )
+
+// Heading3
+W_head3 = Seq( [expect("==="), Action(Repeat1( Negate("=") ), makeH3), expect("==="), expect(W_nl)]  )
+
+// Heading4
+W_head4 = Seq( [expect("===="), Action(Repeat1( Negate("=") ), makeH4), expect("===="), expect(W_nl)]  )
+
+// Headings
+W_heading = Choice([W_head1,W_head2,W_head3,W_head4])
+
+// Text
+W_text = Action( Repeat1( Negate(Choice([W_nl, W_heading]) )) , makeText)
+
+// Blank line
+W_blank = Seq([Repeat0(W_ws), W_nl])
+
+// Paragraphs
+W_lineOfText = Action( Seq( [W_text, expect(W_nl)] ) , { x => joinStr(x, "\n") })
+//W_para = Action( Seq( [ Repeat1( W_lineOfText ), expect(Repeat0(W_nl))] ) , makePara)
+W_para = Action( Seq( [ Repeat1( W_lineOfText ), expect(Repeat1(W_nl))] ) , makePara)
+
+W_run = Repeat0( Choice([W_heading, W_nl, W_para, expect(W_nl)]) )
+
+myres = W_run.parse(test)["ast"]
+// prettyPrint(W_run, test)
+
+function ppp(ar)
+    res = ""
+    for el in ar
+        if typeOf(el) == 9
+            el = joinStr(el, "")
+        end
+        res += el
+    end
+    return res
+end
+
+function escape(s, quote)
+    /*Replace special characters "&", "<" and ">" to HTML-safe sequences.
+    If the optional flag quote is true, the quotation mark character (")
+    is also translated.*/
+    s = strReplace( s, "&", "&amp;") // Must be done first!
+    s = strReplace( s, "<", "&lt;")
+    s = strReplace( s, ">", "&gt;")
+    if quote : s = strReplace( s,'"', "&quot;")
+    return s
+end
+
+function pprint(lst)
+    res = []
+
+    for elem in lst
+        if elem.typeId() == ArrayType
+            res += pprint(elem)
+        else
+            res += elem
+        end
+    end
+    return "[" + ", ".merge(res) + "]"
+end
+
+prarr(myres)
+//pprint(myres)
