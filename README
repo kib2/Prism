@@ -3,6 +3,9 @@
 Prism's intention is to be a generic syntax highlighter, ie a one that you can 
 extend **easily**.
 
+Be aware that Prism has only been tested on a Ruby 1.9.x version. I think it
+should also work with 1.8.x, but some grammar may have then have a few problems.
+
 == Grammars
 
 At the moment, there's only 3 grammar files [Ruby, Falcon, XML], but adding 
