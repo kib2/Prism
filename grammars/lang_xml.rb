@@ -6,7 +6,6 @@
     {:pattern => '</?', :style => "Entities1", :action => "Tag"},
     {:pattern => '\&(.*?);', :style => "Entities2"},
     {:pattern => '(?<!\\\\)"', :style => "DoubleString", :action => "DoubleString"},
-    {:pattern => "(?<!\\\\)'", :style => "SingleString", :action => "SingleString"},
 ],
 
 :Tag => [

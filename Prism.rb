@@ -25,7 +25,7 @@ class HtmlFormatter
     end
       
     def highlight(text, thestate)
-        # We escape thetext
+        # We escape the text
         q = CGI.escapeHTML(text)
         if thestate == 'Root'
             ln = q
@@ -49,7 +49,6 @@ class HL
     def initialize(formatter, language)
       @formatter = formatter
       @language  = language
-      
       # others
       @allRules = nil
       @callBacks = {}
@@ -263,54 +262,39 @@ class HL
     # DIRECT HIGHLIGHTING METHODS
     #
     
-  def from_file(in_file, out_file)
-    num_of_lines = 0
-    header = <<-eos
-<html>
- <head>
-     <link rel="Stylesheet" type="text/css" href="sunburst.css" />
- </head>
- <body>
-      <div class="default">
-        <pre class="code">
-    eos
-
-    footer = <<-eos
-        </pre>
-      </div>
- </body>
-</html>
-    eos
-
-    out = []
-    s = File.size(in_file)
-    File.open(in_file, 'r') do |f|
-      while line = f.gets
-        num_of_lines += 1
-        out << highlightLine(line)
+    def from_file(in_file, out_file)
+      num_of_lines = 0
+      header = <<-eos
+  <html>
+   <head>
+       <link rel="Stylesheet" type="text/css" href="main.css" />
+   </head>
+   <body>
+        <div class="default">
+          <pre class="code">
+      eos
+  
+      footer = <<-eos
+          </pre>
+        </div>
+   </body>
+  </html>
+      eos
+  
+      out = []
+      s = File.size(in_file)
+      File.open(in_file, 'r') do |f|
+        while line = f.gets
+          num_of_lines += 1
+          out << highlightLine(line)
+        end
       end
+  
+      File.open(out_file, "w") do |f|
+        f << header + out.join("") + footer
+      end
+  
+      puts "Output save in '#{out_file}' [total lines: #{num_of_lines}, Size: #{s}]"
+      puts
     end
-
-    File.open(out_file, "w") do |f|
-      f << header + out.join("") + footer
-    end
-
-    puts "Output save in '#{out_file}' [total lines: #{num_of_lines}, Size: #{s}]"
-    puts
-  end
 end
-
-#
-# MAIN SCRIPT
-#
-INPUT_DIR = 'input_test_files/'
-INPUT_FILE = 'xml_test.xml' #'coderay_scanner.rb'
-OUTPUT_DIR = 'output_test_files/'
-
-t0 = Time.now
-formatter = HtmlFormatter.new()
-h = HL.new(formatter, "xml")
-h.from_file(INPUT_DIR + INPUT_FILE, OUTPUT_DIR + 'out.html')
-t1 = Time.now
-puts "Ruby's Prism took #{t1-t0} second(s) to highlight.\nPython's Pygments took 0.34 second.[http://pygments.org/demo/37/]\nDo you STILL think Ruby's so slow ?"
-puts "...and what about Pygments's size ?! Prism is just about ~300 lines long"

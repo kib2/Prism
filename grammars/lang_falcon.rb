@@ -1,7 +1,7 @@
 {
 :falcon_root => [
     {:pattern => "(#!\/usr\/bin\/falcon)", :style => "Shebang"},
-    { :pattern => '\b-?[0-9][0-9.xA-F]*\b', :style     => "Integer"},
+    { :pattern => '\b-?[0-9][0-9.xA-F]*\b', :style => "Integer"},
     { :pattern => '\b(default|try|case|catch|continue|select|while|loop|for|forfirst|formiddle|forlast|end|if|elif|else|break|switch|inspect)\b', :style => "Keywords" },
     { :pattern => '\b(bless|dropping|return|launch|from|global|const|sender|catch|raise|give|pass|directive|load|len|export|enum|try|select|object|print|printl|provides)\b', :style => "Keywords2"},
     { :pattern => '\b(NilType|IntegerType|NumericType|RangeType|MemBufType|FunctionType|StringType|ArrayType|DictionaryType|ObjectType|ClassType|MethodType|ExtMethodType|ClassMethodType|LibFuncType|OpaqueType)\b', :style => "Types"},
