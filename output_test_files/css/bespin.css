@@ -47,12 +47,15 @@ color: #9B5C2E;
 
 pre span.Keywords {
 color: #89725B;
-/* font-weight: bold; */
+}
+
+pre span.Keywords1 {
+color: #FF6F6F;
+font-weight: bold;
 }
 
 pre span.Keywords2 {
 color: #89725B;
-/* font-weight: bold; */
 }
 
 pre span.Keywords3 {
