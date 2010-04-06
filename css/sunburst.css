@@ -4,9 +4,9 @@ font-size: 80%;
 padding:0.0em 0em 0em 0.5em;
 margin: 0px;
 border: 1px solid #D98719;
-color: #515044;
+color: #F8F8F8;
 opacity:0.9;
-background-color: #eeeeee;
+background-color: #000000;
 overflow-x: auto;
 overflow-y: hidden;
 line-height: 125%;
@@ -18,17 +18,17 @@ color: #fff;
 }
 
 .Shebang{
-color: #4e9a06;
+color: #AFC4DB;
 font-style: italic;
 }
 
 .BlockComment{
-color: #0066ff;
+color: #3D3D3D;
 font-style: italic;
 }
 
 .Comment {
-color: #0066ff;
+color: #3D3D3D;
 font-style: italic;
 }
 
@@ -38,20 +38,20 @@ color: #ad7fa8;
 }
 
 .className {
-color: #ff6a6a;
+color: #C7FF2F;
 }
 
 .funcName {
-color: #ff8000;
+color: #9B5C2E;
 }
 
 .Keywords {
-color: #4e9a06;
+color: #89725B;
 /* font-weight: bold; */
 }
 
 .Keywords2 {
-color: #9700cc;
+color: #89725B;
 /* font-weight: bold; */
 }
 
@@ -72,49 +72,53 @@ color: #DF8A45;
 color: #D01D33; 
 }
 
+.Logic {
+color: #4D58CF;
+}
+
 .Types {
-color: #00FF40;
-font-style: italic;
+color: #FFA70F;
 }
 
 .Entities {
-background-color: #3F342B;
-color: #3FCDFF;
+color: #89725B;
 }
 
 .Entities1 {
-color: #000;
+color: #89725B;
 }
 
 .Entities2 {
-color: #CF3E0C;
-/* font-weight: bold; */
+color: #259ADB;
 }
 
 .Entities3 {
-color: #8FCDFF;
+color: #CF6A4C;
+}
+
+.Entities4 {
+color: #CF6FFF;
 }
 
 .Pars {
-color: #4e9a06;
+color: #FFE900;
 }
 
 .Operators{
-color: #ef2929;
+color: #FF9F9F;
+font-weight: bold;
 }
 
 .String, .SingleString {
-color: #729fcf;
-background-color: #eeeeee; 
+color: #B2D72C;
 }
 
 .DoubleString {
-color: #729fcf;
-background-color: #eeeeee;
+color: #B2D72C;
 }
 
 .Number {
-color: #0066cd; 
+color: #9B859D; 
 }
 
 .Integer {
@@ -131,17 +135,24 @@ color: #49A5FF;
 
 .Regex {
 color: #29AFDF;
+/*background-color: #2F1D1D;*/
+}
+
+.RegexOptions {
+color: #29AFDF;
 background-color: #2F1D1D;
 }
 
 .Dico {
-color: #61FF2F;
-background-color: #183F0C;
+color: #6EEF0E;
 }
 
-.Url, .Url .a  {
-color: #ff6a6a;
-background-color: #4F8A9F;
+.Constant1 {
+color: #EF4A60;
+}
+
+.Url, .Url a  {
+color: #9F0909;
+background-color: #000;
 text-decoration: underline;
-font-style: italic;
 }

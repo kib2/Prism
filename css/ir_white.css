@@ -1,5 +1,6 @@
 pre.code {
-font-family: "Monaco";
+font-family: "Consolas","DejaVu Sans Mono","Monaco";
+font-size: 80%;
 padding:0.0em 0em 0em 0.5em;
 margin: 0px;
 border: 1px solid #D98719;
@@ -12,126 +13,131 @@ line-height: 125%;
 text-align: left;
 }
 
-.Root{
+pre span.Root{
 color: #010101;
 }
 
-.Shebang{
+pre span.Shebang{
 color: #AFC4DB;
 font-style: italic;
 }
 
-.BlockComment{
+pre span.BlockComment{
 color: #898989;
 font-style: italic;
 }
 
-.Comment {
+pre span.Comment {
 color: #898989;
 font-style: italic;
 }
 
-.Logic {
+pre span.Logic {
 color: #ad7fa8;
 /* font-weight: bold; */
 }
 
-.className {
+pre span.className {
 color: #BC4D00;
 }
 
-.funcName {
+pre span.funcName {
 color: #0067C2;
 }
 
-.Keywords {
+pre span.Keywords {
 color: #016692;
 }
 
-.Keywords2 {
+pre span.Keywords2 {
 color: #A00294;
 }
 
-.Keywords3 {
+pre span.Keywords3 {
 color: #CF19CB;
 font-style: italic;
 }
 
-.Keywords4 {
+pre span.Keywords4 {
 color: #473E8F;
 }
 
-.Keywords5 {
+pre span.Keywords5 {
 color: #DF8A45;
 }
 
-.Special{
+pre span.Special{
 color: #00FF00; 
 }
 
-.Types {
+pre span.Types {
 color: #333366;
 font-style: italic;
 }
 
-.Entities {
+pre span.Entities {
 color: #A15001;
 background-color: #FFFFFF;
 }
 
-.Entities2 {
+pre span.Entities1 {
+color: #A15001;
+background-color: #FFFFFF;
+}
+
+pre span.Entities2 {
 color: #877611;
 }
 
-.Entities3 {
+pre span.Entities3 {
 color: #646409;
 }
 
-.Pars {
+pre span.Pars {
 color: #667587;
 }
 
-.Operators{
+pre span.Operators{
 color: #CF7D34;
 }
 
-.String, .SingleString {
+pre span.String, pre span.SingleString {
 color: #009F78;
 background-color: #FFFFFF;
 }
 
-.DoubleString {
+pre span.DoubleString {
 color: #009F78;
 background-color: #FFFFFF;
 }
 
-.Number {
+pre span.Number {
 color: #8C008A; 
 }
 
-.Integer {
+pre span.Integer {
 color: #49A5FF;
 }
 
-.Tag {
+pre span.Tag {
 color: #49A5FF; 
 }
 
-.Name {
+pre span.Name {
 color: #49A5FF; 
 }
 
-.Regex {
+pre span.Regex {
 color: #29AFDF;
 background-color: #2F1D1D;
 }
 
-.Dico {
+pre span.Dico {
 color: #61FF2F;
 background-color: #183F0C;
 }
 
-.Url, .Url a  {
+pre span.Url, pre span.Url a  {
 color: #628795;
 background-color: #FFFFFF;
 text-decoration: underline;

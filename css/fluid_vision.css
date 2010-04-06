@@ -1,144 +1,149 @@
 pre.code {
-font-family: "Consolas";
+font-family: "Consolas","DejaVu Sans Mono","Monaco";
 font-size: 80%;
 padding:0.0em 0em 0em 0.5em;
 margin: 0px;
 border: 1px solid #D98719;
 color: #000000;
-opacity:0.9;
 background-color: #F4F4F4;
+opacity:0.9;
 overflow-x: auto;
 overflow-y: hidden;
 line-height: 125%;
 text-align: left;
 }
 
-.Root{
+pre span.Root{
 color: #000000;
 }
 
-.Shebang{
+pre span.Shebang{
 color: #1A921C;
 font-style: italic;
 }
 
-.BlockComment{
+pre span.BlockComment{
 color: #386F90;
 background-color: #DDEEFE;
 font-style: italic;
 }
 
-.Comment {
+pre span.Comment {
 color: #386F90;
 background-color: #DDEEFE;
 }
 
-.Logic {
+pre span.Logic {
 color: #ad7fa8;
 /* font-weight: bold; */
 }
 
-.className {
+pre span.className {
 /*color: #70727E; */
 color: #1B4B9D;
 font-style: italic;
 }
 
-.funcName {
+pre span.funcName {
 color: #001D56;
 /* color: #1B4B9D; */
 font-weight: bold;
 }
 
-.Keywords {
+pre span.Keywords {
 color: #5B91E1;
 font-weight: bold;
 }
 
-.Keywords2 {
+pre span.Keywords2 {
 color: #3C4C72;
 }
 
-.Keywords3 {
+pre span.Keywords3 {
 color: #2D5579;
 }
 
-.Keywords4 {
+pre span.Keywords4 {
 color: #473E8F;
 }
 
-.Keywords5 {
+pre span.Keywords5 {
 color: #DF8A45;
 }
 
-.Special{
+pre span.Special{
 color: #00FF00; 
 }
 
-.Types {
+pre span.Types {
 color: #333366;
 font-style: italic;
 }
 
-.Entities {
+pre span.Entities {
 color: #26B31A;
 background-color: #F4F4F4;
 }
 
-.Entities2 {
+pre span.Entities1 {
+color: #26B31A;
+background-color: #F4F4F4;
+}
+
+pre span.Entities2 {
 color: #877611;
 }
 
-.Entities3 {
+pre span.Entities3 {
 color: #646409;
 }
 
-.Pars {
+pre span.Pars {
 color: #B90690;
 }
 
-.Operators{
+pre span.Operators{
 color: #687687;
 }
 
-.String, .SingleString {
+pre span.String, pre span.SingleString {
 color: #840E0B;
 background-color: #F4F4F4;
 }
 
-.DoubleString {
+pre span.DoubleString {
 color: #840E0B;
 background-color: #F4F4F4;
 }
 
-.Number {
+pre span.Number {
 color: #C34F0A;
 font-weight: bold; 
 }
 
-.Integer {
+pre span.Integer {
 color: #C5060B;
 }
 
-.Tag {
+pre span.Tag {
 color: #49A5FF; 
 }
 
-.Name {
+pre span.Name {
 color: #49A5FF; 
 }
 
-.Regex {
+pre span.Regex {
 color: #29AFDF;
 background-color: #2F1D1D;
 }
 
-.Dico {
+pre span.Dico {
 color: #61FF2F;
 background-color: #183F0C;
 }
 
-.Url, .Url a  {
+pre span.Url, pre span.Url a  {
 color: #628795;
 background-color: #FFFFFF;
 text-decoration: underline;
