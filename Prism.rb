@@ -122,8 +122,9 @@ class HL
         end
         
         if match
-            # TODO : CALLBACKS
+            # CALLBACKS rules
             if me[:rule].key?(:callback)
+              #self.send(me[:rule][:callback], me[:reg])
               self.send(me[:rule][:callback], me[:reg])
             end
             
@@ -238,29 +239,32 @@ class HL
             else
                 @styles.push(me[:style])
         end
-        # Style transitions between state changes : experimental!
+        # When we change state, the next style is
+        # set to the previous one by default.
+        # Using transit rule, you can overide this behaviour.
         if me[:transit]
             @styles.push(me[:transit])
             @was_transit = true
         end
     end
-    
-    #
-    # CALLBACK METHODS
-    #
-    def cb_biz(my_reg)
-      # puts "A special callback matched! '" + my_reg[2] + "'"
-      to_add = [{
-              :pattern   => /\A\s+#{my_reg[2]}/,
-              :style     => "funcName",
-              :action    => "#pop"
-              }]
-      @allRules[:bizString] = to_add
-    end
 
     #
     # DIRECT HIGHLIGHTING METHODS
     #
+    def from_string(code_in_text)
+      code_in_text.gsub("\r\n", "\n")
+      from_list(code_in_text.split("\n"))    
+    end
+    
+    def from_list(code_in_array)
+      num_of_lines = 0
+      out = []
+      code_in_array.each do |line|
+        num_of_lines += 1
+        out << highlightLine(line)
+      end
+      out.join("\n")
+    end
     
     def from_file(in_file, out_file)
       num_of_lines = 0

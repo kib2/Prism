@@ -1,4 +1,20 @@
-{
+#!/usr/bin/ruby
+# coding: utf-8
+
+#
+# ===== FALCON P.L GRAMMAR FILE
+#
+
+def cb_biz_string(my_reg)
+  to_add = [{
+          :pattern   => /\s*#{my_reg[2]}/,
+          :style     => "funcName",
+          :action    => "#pop"
+          }]
+  @allRules[:bizString] = to_add
+end
+
+dic_falcon = {
 :falcon_root => [
     {:pattern => "(#!\/usr\/bin\/falcon)", :style => "Shebang"},
     { :pattern => '\b-?[0-9][0-9.xA-F]*\b', :style => "Integer"},

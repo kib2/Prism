@@ -1,11 +1,27 @@
-{
+#!/usr/bin/ruby
+# coding: utf-8
+
+#
+# ===== RUBY GRAMMAR FILE
+#
+
+def cb_biz_string(my_reg)
+  to_add = [{
+          :pattern   => /\s*#{my_reg[2]}/,
+          :style     => "funcName",
+          :action    => "#pop"
+          }]
+  @allRules[:bizString] = to_add
+end
+
+dic_rb = {
 :rb_root => [
               {:pattern => '(<<-)(.*)', :style => ["Operators","Operators"], "callback" => "cb_longString"},
               {:pattern => '(?<!\\\\)"', :style => "DoubleString", :action => "DoubleString"},
               {:pattern => "(?<!')'", :style => "SingleString", :action => "SingleString"},
-              {:pattern => '%Q\{', :style => "SingleString", :action => "QuotedString"},
+              {:pattern => '(%Q)(\{)', :style => ["Keywords2","Pars"], :transit => "SingleString", :action => "QuotedString"},
               {:pattern => '(<<-)(.*)$', :style => ["SingleString","FuncName"], 
-               :action => "bizString", :callback => 'cb_biz', :transit => "SingleString"},
+               :action  => "bizString", :callback => 'cb_biz_string', :transit => "SingleString"},
               {:pattern => '=begin', :style => "BlockComment", :action => "BlockComment"},
               {:pattern => '(?<!\\\\)\/', :style => "Regex", :action => "regexp"},
               {:pattern => 'attr_accessor|attr_reader', :style => "Entities2"},
@@ -44,7 +60,7 @@
   ## Quoted string state
   :QuotedString => [
                       {:pattern => '\$\w+|\$\(.*?\)', :style => "Entities"},
-                      {:pattern => '\}', :style => "SingleString", :action => "#pop"}
+                      {:pattern => '\}', :style => "Pars", :action => "#pop"}
   ],
   
   ## Comment block state
