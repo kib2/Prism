@@ -3,8 +3,16 @@
 Prism's intention is to be a generic syntax highlighter, ie a one that you can 
 extend **easily**.
 
+== Grammars
+
 At the moment, there's only 3 grammar files [Ruby, Falcon, XML], but adding 
 more is a matter of writting a few regexps inside a state machine.
+
+Also, the XML one can be used to highlight HTML.
+
+== Capabilities
+
+It is possible (I really hope so!) to embbed a grammar inside another.
 
 == Usage
 
