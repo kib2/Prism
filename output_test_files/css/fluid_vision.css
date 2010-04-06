@@ -1,0 +1,151 @@
+pre.code {
+font-family: "Consolas","DejaVu Sans Mono","Monaco";
+font-size: 80%;
+padding:0.0em 0em 0em 0.5em;
+margin: 0px;
+border: 1px solid #D98719;
+color: #000000;
+background-color: #F4F4F4;
+opacity:0.9;
+overflow-x: auto;
+overflow-y: hidden;
+line-height: 125%;
+text-align: left;
+}
+
+pre span.Root{
+color: #000000;
+}
+
+pre span.Shebang{
+color: #1A921C;
+font-style: italic;
+}
+
+pre span.BlockComment{
+color: #386F90;
+background-color: #DDEEFE;
+font-style: italic;
+}
+
+pre span.Comment {
+color: #386F90;
+background-color: #DDEEFE;
+}
+
+pre span.Logic {
+color: #ad7fa8;
+/* font-weight: bold; */
+}
+
+pre span.className {
+/*color: #70727E; */
+color: #1B4B9D;
+font-style: italic;
+}
+
+pre span.funcName {
+color: #001D56;
+/* color: #1B4B9D; */
+font-weight: bold;
+}
+
+pre span.Keywords {
+color: #5B91E1;
+font-weight: bold;
+}
+
+pre span.Keywords2 {
+color: #3C4C72;
+}
+
+pre span.Keywords3 {
+color: #2D5579;
+}
+
+pre span.Keywords4 {
+color: #473E8F;
+}
+
+pre span.Keywords5 {
+color: #DF8A45;
+}
+
+pre span.Special{
+color: #00FF00; 
+}
+
+pre span.Types {
+color: #333366;
+font-style: italic;
+}
+
+pre span.Entities {
+color: #26B31A;
+background-color: #F4F4F4;
+}
+
+pre span.Entities1 {
+color: #26B31A;
+background-color: #F4F4F4;
+}
+
+pre span.Entities2 {
+color: #877611;
+}
+
+pre span.Entities3 {
+color: #646409;
+}
+
+pre span.Pars {
+color: #B90690;
+}
+
+pre span.Operators{
+color: #687687;
+}
+
+pre span.String, pre span.SingleString {
+color: #840E0B;
+background-color: #F4F4F4;
+}
+
+pre span.DoubleString {
+color: #840E0B;
+background-color: #F4F4F4;
+}
+
+pre span.Number {
+color: #C34F0A;
+font-weight: bold; 
+}
+
+pre span.Integer {
+color: #C5060B;
+}
+
+pre span.Tag {
+color: #49A5FF; 
+}
+
+pre span.Name {
+color: #49A5FF; 
+}
+
+pre span.Regex {
+color: #29AFDF;
+background-color: #2F1D1D;
+}
+
+pre span.Dico {
+color: #61FF2F;
+background-color: #183F0C;
+}
+
+pre span.Url, pre span.Url a  {
+color: #628795;
+background-color: #FFFFFF;
+text-decoration: underline;
+font-style: italic;
+}

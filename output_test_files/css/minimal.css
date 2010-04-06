@@ -1,0 +1,147 @@
+pre.code {
+font-family: "Consolas","DejaVu Sans Mono","Monaco";
+font-size: 80%;
+padding:0.0em 0em 0em 0.5em;
+margin: 0px;
+border: 1px solid #D98719;
+/* opacity:0.9; */
+background-color: #302D26;
+color: #FCFFE0;
+overflow-x: auto;
+overflow-y: hidden;
+line-height: 125%;
+text-align: left;
+}
+
+pre span.Root{
+color: #fff;
+}
+
+pre span.Shebang{
+color: ##D1A796;
+font-style: italic;
+}
+
+pre span.BlockComment{
+color: #9FC28A;
+font-style: italic;
+}
+
+pre span.Comment {
+color: #706D5B;
+font-style: italic;
+}
+
+pre span.Logic {
+color: #FFEE80;
+/* font-weight: bold; */
+}
+
+pre span.className {
+color: #73817D;
+}
+
+pre span.funcName {
+color: #85873A;
+font-weight: bold;
+}
+
+pre span.Keywords {
+color: #949C8B;
+font-weight: bold;
+}
+
+pre span.Keywords2 {
+color: #47758F;
+font-weight: bold;
+}
+
+pre span.Keywords3 {
+color: #CF19CB;
+font-weight: bold;
+}
+
+pre span.Keywords4 {
+color: #473E8F;
+}
+
+pre span.Keywords5 {
+color: #DF8A45;
+}
+
+pre span.Special{
+color: #D01D33; 
+}
+
+pre span.Types {
+color: #3B6BEF;
+font-style: italic;
+}
+
+pre span.Entities {
+color: #439740;
+}
+
+pre span.Entities1 {
+color: #439740;
+}
+
+pre span.Entities2 {
+color: #CF3E0C;
+/* font-weight: bold; */
+}
+
+pre span.Entities3 {
+color: #99A190;
+font-weight: bold;
+}
+
+pre span.Pars {
+color: #FFEE80;
+}
+
+pre span.Operators{
+color: #ef2929;
+}
+
+pre span.String, pre span.SingleString {
+color: #C7A4A1;
+background-color: #232826;
+}
+
+pre span.DoubleString {
+color: #1D9F6C;
+background-color: >#180024;
+}
+
+pre span.Number {
+color: #FFEE80; 
+}
+
+pre span.Integer {
+color: #49A5FF;
+}
+
+pre span.Tag {
+color: #49A5FF; 
+}
+
+pre span.Name {
+color: #49A5FF; 
+}
+
+pre span.Regex {
+color: #29AFDF;
+background-color: #2F1D1D;
+}
+
+pre span.Dico {
+color: #61FF2F;
+background-color: #183F0C;
+}
+
+pre span.Url, pre span.Url a  {
+color: #EB939A;
+background-color: #000E1A;
+text-decoration: underline;
+}
