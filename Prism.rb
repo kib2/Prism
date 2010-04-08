@@ -101,22 +101,23 @@ class HL
            :start => nil, :ends =>  nil, :rule    => nil,
            :match => nil, :style => nil, :pop     => false,
            :push  => nil, :reg   => nil, :transit => nil,
-           :callback => nil 
+           :callback => nil, :prio => false 
              }
  
         @allRules[(@states[-1]).to_sym].each do |r|
-            reg = r[:pattern]
+            reg  = r[:pattern]
+            prio = r[:prio]
             if (m = reg.match(line))
                 m0 = m.begin(0)
                 m1 = m.end(0)
                 # the best rule is the one matchingfirst
                 # or the longest one if 2 rules matches at the samepos
-                if (m0 < lowest or (m0 == lowest and m1 >= longest) )
-                    match    = true
+                if (m0 < lowest or (m0 == lowest and m1 > longest) )
+                    match = true
                     me = updateMatchObject(me,m0,m1,r,m)
                     # update lowest andlongest
-                    lowest   = m0
-                    longest  = m1
+                    lowest  = m0
+                    longest = m1
                 end
             end
         end
