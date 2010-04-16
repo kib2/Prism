@@ -1,4 +1,4 @@
-pre.code {
+pre, pre.code {
 font-family: "Consolas","DejaVu Sans Mono","Monaco";
 font-size: 80%;
 padding:0.0em 0em 0em 0.5em;
@@ -156,7 +156,6 @@ color: #EF4A60;
 }
 
 pre span.Url, pre span.Url a  {
-color: #9F0909;
-background-color: #000;
+color: #3BE2EF;
 text-decoration: underline;
 }

@@ -49,7 +49,9 @@ class HL
     def initialize(formatter, language)
       @formatter = formatter
       @language  = language
+      
       # others
+      @grammars = {} # Keeps track of the grammars we use (not to load them twice)
       @allRules = nil
       @callBacks = {}
       @lang_mod = nil
@@ -59,14 +61,23 @@ class HL
       
       # setting the formatter and loading syntax
       @formatter.parent = self
-      load_syntax_def(@language)
+      load_syntax_def(@language.capitalize)
       @states.push( "#{@language}_root")
     end
     
     def load_syntax_def(lang)
-      @allRules = open("grammars/lang_#{lang}.rb", 'r') {|f| eval f.read }
-
-      # now, transform each pattern in a regexp, it is a lot quicker
+      # Check if language is already in @grammars
+      if @grammars.key?(lang.to_sym)
+        @allRules = @grammars[lang.to_sym].send("#{lang}_dic")
+      else
+        require "grammars/lang_#{lang}" # Seems OK
+        mod = "#{lang}Lang" # Name of my module to include
+        puts "MOD = #{mod}"
+        r = extend(Object.const_get("#{lang}Lang") )
+        @grammars[lang.to_sym] = r
+        @allRules = r.send("#{lang}_dic")
+      end
+      # Now, transform each pattern in a regexp, it is a lot quicker
       # than building a Regexp object every time we need one
       @allRules.each do |k,v|
           @allRules[k].each do |t|
@@ -164,15 +175,16 @@ class HL
         
         out = []
 
-        while me = getNextMatch(line)
+         while me = getNextMatch(line)
 
             if me[:start] != me[:ends] # start pos != end pos   
                 if me[:reg] # a rulematched
-                  
-                    # highlight what has not matched with last style
+                    # highlight the part before the match
                     if (me[:start]-1) >= 0
-                      out << @formatter.highlight(line[0..(me[:start]-1)], @styles[-1])
+                      color = getStyle(me)
+                      out << @formatter.highlight(line[0..(me[:start]-1)], color) #@styles[-1])
                     end
+                    
                     # highlight withgroup 
                     if me[:style].class == Array 
                         num_of_times = me[:reg].captures.length
@@ -188,8 +200,9 @@ class HL
                     end
 
                 else # no rulematched (remember we set start and end)
-                    out << @formatter.highlight( line[me[:start]..(me[:ends]-1)], @styles[-1] )
-                    handlePush_Pop(me)
+                    color = getStyle(me)
+                    out << @formatter.highlight( line[me[:start]..(me[:ends]-1)], color) #@styles[-1])
+                    #handlePush_Pop(me)
                 end
                 line = line[me[:ends]..line.length]
             else # we are at theend
@@ -226,27 +239,39 @@ class HL
               @styles.pop()
             end
             # Style transitions between state changes : experimental!
-            if @was_transit
-                @was_transit = false
-                @styles.pop()
-            end
+            #if @was_transit
+            #    @was_transit = false
+            #    @styles.pop()
+            #end
         end
     end
     
     def updateStyle(me)
-        case me[:style].class
-            when Array
-                @styles.push(me[:style][-1])
-            else
-                @styles.push(me[:style])
-        end
         # When we change state, the next style is
         # set to the previous one by default.
         # Using transit rule, you can overide this behaviour.
         if me[:transit]
             @styles.push(me[:transit])
             @was_transit = true
+            return
         end
+        case me[:style].class
+            when Array
+                @styles.push(me[:style][-1])
+            else
+                @styles.push(me[:style])
+        end
+
+    end
+
+    def getStyle(me)
+      r = @lastStyle
+      if r != nil
+        @lastStyle = nil
+      else 
+        r = @styles[-1]
+      end
+      return r
     end
 
     #

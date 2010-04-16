@@ -1,0 +1,33 @@
+<html>
+  <head><title>Ruby Toys -- <%= @name %></title></head>
+  <body>
+
+    <h1><%= @name %> (<%= @code %>)</h1>
+    <p><%= @desc %></p>
+
+    <ul>
+      <% @features.each do |f| %>
+        <li><b><%= f %></b></li>
+      <% end %>
+    </ul>
+
+    <p>
+      <% if @cost < 10 %>
+        <b>Only <%= @cost %>!!!</b>
+      <% else %>
+         Call for a price, today!
+      <% end %>
+    </p>
+    
+    <%
+    dbh = DBI.connect("DBI:Mysql:yourbase:mysql.mycorp.com", "you", "XXXX")
+    query = dbh.prepare("your fancy query")
+    query.execute
+    while row = query.fetch do
+    todisplay=some_funny_things()
+    %>
+    <%= todisplay %>
+    <% end %>
+
+  </body>
+</html>
