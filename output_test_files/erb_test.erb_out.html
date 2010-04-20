@@ -1,0 +1,43 @@
+  <html>
+   <head>
+       <link rel="Stylesheet" type="text/css" href="main.css" />
+   </head>
+   <body>
+        <div class="default">
+          <pre class="code">
+<span class="Entities1">&lt;</span><span class="Entities3">html</span><span class="Entities1">&gt;</span>
+  <span class="Entities1">&lt;</span><span class="Entities3">head</span><span class="Entities1">&gt;</span><span class="Entities1">&lt;</span><span class="Entities3">title</span><span class="Entities1">&gt;</span>Ruby Toys -- <span class="Special">&lt;%=</span> <span class="Dico">@name</span> <span class="Special">%&gt;</span><span class="Entities1">&lt;/</span><span class="Entities3">title</span><span class="Entities1">&gt;</span><span class="Entities1">&lt;/</span><span class="Entities3">head</span><span class="Entities1">&gt;</span>
+  <span class="Entities1">&lt;</span><span class="Entities3">body</span><span class="Entities1">&gt;</span>
+
+    <span class="Entities1">&lt;</span><span class="Entities3">h1</span><span class="Entities1">&gt;</span><span class="Special">&lt;%=</span> <span class="Dico">@name</span> <span class="Special">%&gt;</span> (<span class="Special">&lt;%=</span> <span class="Dico">@code</span> <span class="Special">%&gt;</span>)<span class="Entities1">&lt;/</span><span class="Entities3">h1</span><span class="Entities1">&gt;</span>
+    <span class="Entities1">&lt;</span><span class="Entities3">p</span><span class="Entities1">&gt;</span><span class="Special">&lt;%=</span> <span class="Dico">@desc</span> <span class="Special">%&gt;</span><span class="Entities1">&lt;/</span><span class="Entities3">p</span><span class="Entities1">&gt;</span>
+
+    <span class="Entities1">&lt;</span><span class="Entities3">ul</span><span class="Entities1">&gt;</span>
+      <span class="Special">&lt;%</span> <span class="Dico">@features</span><span class="Operators">.</span><span class="Keywords">each</span> <span class="Keywords3">do</span> <span class="Operators">|</span>f<span class="Operators">|</span> <span class="Special">%&gt;</span>
+        <span class="Entities1">&lt;</span><span class="Entities3">li</span><span class="Entities1">&gt;</span><span class="Entities1">&lt;</span><span class="Entities3">b</span><span class="Entities1">&gt;</span><span class="Special">&lt;%=</span> f <span class="Special">%&gt;</span><span class="Entities1">&lt;/</span><span class="Entities3">b</span><span class="Entities1">&gt;</span><span class="Entities1">&lt;/</span><span class="Entities3">li</span><span class="Entities1">&gt;</span>
+      <span class="Special">&lt;%</span> <span class="Keywords">end</span> <span class="Special">%&gt;</span>
+    <span class="Entities1">&lt;/</span><span class="Entities3">ul</span><span class="Entities1">&gt;</span>
+
+    <span class="Entities1">&lt;</span><span class="Entities3">p</span><span class="Entities1">&gt;</span>
+      <span class="Special">&lt;%</span> <span class="Keywords">if</span> <span class="Dico">@cost</span> <span class="Operators">&lt;</span> <span class="Special">10</span> <span class="Special">%&gt;</span>
+        <span class="Entities1">&lt;</span><span class="Entities3">b</span><span class="Entities1">&gt;</span>Only <span class="Special">&lt;%=</span> <span class="Dico">@cost</span> <span class="Special">%&gt;</span>!!!<span class="Entities1">&lt;/</span><span class="Entities3">b</span><span class="Entities1">&gt;</span>
+      <span class="Special">&lt;%</span> <span class="Keywords">else</span> <span class="Special">%&gt;</span>
+         Call for a price, today!
+      <span class="Special">&lt;%</span> <span class="Keywords">end</span> <span class="Special">%&gt;</span>
+    <span class="Entities1">&lt;/</span><span class="Entities3">p</span><span class="Entities1">&gt;</span>
+    
+    <span class="Special">&lt;%</span>
+    dbh <span class="Operators">=</span> <span class="Special">DBI</span><span class="Operators">.</span>connect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">DBI:Mysql:yourbase:mysql.mycorp.com</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">you</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">XXXX</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    query <span class="Operators">=</span> dbh<span class="Operators">.</span>prepare<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">your fancy query</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    query<span class="Operators">.</span>execute
+    <span class="Keywords">while</span> row <span class="Operators">=</span> query<span class="Operators">.</span>fetch <span class="Keywords3">do</span>
+    todisplay<span class="Operators">=</span>some_funny_things<span class="Pars">(</span><span class="Pars">)</span>
+    <span class="Special">%&gt;</span>
+    <span class="Special">&lt;%=</span> todisplay <span class="Special">%&gt;</span>
+    <span class="Special">&lt;%</span> <span class="Keywords">end</span> <span class="Special">%&gt;</span>
+
+  <span class="Entities1">&lt;/</span><span class="Entities3">body</span><span class="Entities1">&gt;</span>
+<span class="Entities1">&lt;/</span><span class="Entities3">html</span><span class="Entities1">&gt;</span>          </pre>
+        </div>
+   </body>
+  </html>

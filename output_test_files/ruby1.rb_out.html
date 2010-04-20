@@ -1,0 +1,91 @@
+  <html>
+   <head>
+       <link rel="Stylesheet" type="text/css" href="main.css" />
+   </head>
+   <body>
+        <div class="default">
+          <pre class="code">
+#<span class="Operators">!</span><span class="Regex">/usr/</span>bin<span class="Operators">/</span>ruby
+# coding<span class="Operators">:</span> utf<span class="Number">-8</span>
+
+<span class="Operators">=</span>begin
+  This is the String Test<span class="Pars">,</span> See here <span class="Keywords">for</span> a reference<span class="Operators">:</span>
+  http<span class="Operators">:</span><span class="Regex">//</span>www.devarticles.com<span class="Regex">/c/</span>a<span class="Regex">/Ruby-on-Rails/</span>Strings<span class="Operators">-</span><span class="Keywords">in</span><span class="Operators">-</span>Ruby<span class="Regex">/1/</span>
+<span class="Operators">=</span>end
+
+comedy <span class="Operators">=</span> <span class="Operators">%</span><span class="Operators">!</span>As You Like It<span class="Operators">!</span>
+puts <span class="DoubleString">&quot;</span><span class="DoubleString">=== FROM A STRING</span><span class="DoubleString">&quot;</span>
+
+history <span class="Operators">=</span> <span class="Operators">%</span><span class="Pars">[</span>Henry V<span class="Pars">]</span>
+puts <span class="DoubleString">&quot;</span><span class="DoubleString">=== FROM A STRING</span><span class="DoubleString">&quot;</span>
+
+tragedy <span class="Operators">=</span> <span class="Operators">%</span><span class="Pars">(</span>Julius Ceasar<span class="Pars">)</span>
+puts <span class="DoubleString">&quot;</span><span class="DoubleString">=== FROM A STRING</span><span class="DoubleString">&quot;</span>
+
+sonnet <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span><span class="Number">29</span> 
+When <span class="Keywords">in</span> disgrace <span class="Keywords">with</span> fortune and men<span class="SingleString">'</span><span class="SingleString">s eyes
+</span><span class="SingleString">I all alone beweep my outcast state,
+</span><span class="SingleString">And trouble deaf heaven with my bootless cries,
+</span><span class="SingleString">And look upon myself, and curse my fate, 
+</span><span class="SingleString">Wishing me like to one more rich in hope, 
+</span><span class="SingleString">Featured like him, like him with friends possessed,
+</span><span class="SingleString">Desiring this man</span><span class="SingleString">'</span>s art<span class="Pars">,</span> and that man<span class="SingleString">'</span><span class="SingleString">s scope,
+</span><span class="SingleString">With what I most enjoy contented least; 
+</span><span class="SingleString">Yet in these thoughts my self almost despising,
+</span><span class="SingleString">Haply I think on thee, and then my state, 
+</span><span class="SingleString">Like to the lark at break of day arising 
+</span><span class="SingleString">From sullen earth, sings hymns at heaven</span><span class="SingleString">'</span>s gate<span class="Pars">;</span>
+For thy sweet love remembered such wealth brings
+That then I scorn to change my state <span class="Keywords">with</span> kings. 
+<span class="Number">29</span>
+
+some __FILE__ here
+
+sonnet <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span>hamlet # same as <span class="Types">double</span><span class="Operators">-</span>quoted string
+O my prophetic soul<span class="Operators">!</span> My uncle<span class="Operators">!</span>
+hamlet
+
+sonnet <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span><span class="DoubleString">&quot;</span><span class="DoubleString">hamlet</span><span class="DoubleString">&quot;</span> # again as <span class="Types">double</span><span class="Operators">-</span>quoted string
+O my prophetic soul<span class="Operators">!</span> M\\y uncle<span class="Operators">!</span>
+hamlet
+
+sonnet <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span><span class="SingleString">'</span><span class="SingleString">ghost</span><span class="SingleString">'</span> # same as single<span class="Operators">-</span>quoted string
+Pity me not<span class="Pars">,</span> but lend thy serious hearing 
+To what I shall unfold.
+ghost
+
+my_dir <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span>`dir` # same as back ticks
+ls <span class="Operators">-</span>l 
+dir
+
+ind <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span><span class="Operators">-</span>hello # <span class="Keywords">for</span> indentation
+    Hello<span class="Pars">,</span> Matz<span class="Operators">!</span>
+hello
+
+__END__
+
+puts
+
+sonnet <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span>hamlet # same as <span class="Types">double</span><span class="Operators">-</span>quoted string
+O my prophetic soul<span class="Operators">!</span> My uncle<span class="Operators">!</span>
+hamlet
+
+sonnet <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span><span class="DoubleString">&quot;</span><span class="DoubleString">hamlet</span><span class="DoubleString">&quot;</span> # again as <span class="Types">double</span><span class="Operators">-</span>quoted string
+O my prophetic soul<span class="Operators">!</span> M\\y uncle<span class="Operators">!</span>
+hamlet
+
+sonnet <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span><span class="SingleString">'</span><span class="SingleString">ghost</span><span class="SingleString">'</span> # same as single<span class="Operators">-</span>quoted string
+Pity me not<span class="Pars">,</span> but lend thy serious hearing 
+To what I shall unfold.
+ghost
+
+my_dir <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span>`dir` # same as back ticks
+ls <span class="Operators">-</span>l 
+dir
+
+ind <span class="Operators">=</span> <span class="Operators">&lt;</span><span class="Operators">&lt;</span><span class="Operators">-</span>hello # <span class="Keywords">for</span> indentation
+    Hello<span class="Pars">,</span> Matz<span class="Operators">!</span>
+hello          </pre>
+        </div>
+   </body>
+  </html>

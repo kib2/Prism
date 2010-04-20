@@ -6,16 +6,16 @@
 #
 
 module RubyLang
-  
+
   # General Delimited Strings Callback
-  def cb_gds(my_reg)
-    pattern = my_reg[2]
-    
+  def cb_gds(me)
+    pattern = me[:reg][2]
+
     if ['[','(','{'].include?(pattern)
       pattern = {'[' => ']','(' => ')','{' => '}'}[pattern]
     end
     s = Regexp.escape(pattern)
-    
+
     to_add = [
             {
             :pattern   => /\s*#{s}/,
@@ -24,15 +24,15 @@ module RubyLang
             }]
     @allRules[:gdsString] = to_add
   end
-  
+
   # Here Documents Callback
-  def cb_hd(my_reg)
-    pattern = my_reg[2]
+  def cb_hd(me)
+    pattern = me[:reg][2]
     ["'",'"','`','-'].each do |chr|
       pattern = pattern.gsub(chr,'')
     end
     res = Regexp.escape(pattern)
-    
+
     to_add = [
             {:pattern => '\\\\', :style => "Entities"},
             {
@@ -42,8 +42,8 @@ module RubyLang
             }]
     @allRules[:hdString] = to_add
   end
-  
-  def Ruby_dic 
+
+  def Ruby_dic
     {
   :ruby_root => [
       {:pattern => '__END__', :style => "Special", :action => "ToEnd", :transit => "BlockComment"},
@@ -51,12 +51,12 @@ module RubyLang
       {:pattern => '(?<!\\\\)"', :style => "DoubleString", :action => "DoubleString"},
       {:pattern => "(?<!')'", :style => "SingleString", :action => "SingleString"},
       # General Delimited Strings:
-      {:pattern => '(%)([Qqx{\(!\[])', :style => "Operators", 
+      {:pattern => '(%)([Qqx{\(!\[])', :style => "Operators",
        :transit => "SingleString", :action => "gdsString", :callback => 'cb_gds'},
       # Here Documents
-      {:pattern => /(<<[-]?)([a-zA-Z0-9_"`']+)/, :style => "Operators", 
+      {:pattern => /(<<[-]?)([a-zA-Z0-9_"`']+)/, :style => "Operators",
        :action  => "hdString", :callback => 'cb_hd', :transit => "SingleString"},
-       
+
       {:pattern => '=begin', :style => "BlockComment", :action => "BlockComment"},
       {:pattern => '(?<!\\\\)\/', :style => "Regex", :action => "regexp"},
       {:pattern => 'attr_accessor|attr_reader', :style => "Entities2"},
@@ -76,38 +76,38 @@ module RubyLang
       {:pattern => '\b(def)\b(\s+)(\w+)', :style => ["Entities2","Root","funcName"]},
       {:pattern => '\b(module)\b(\s+)([a-zA-Z0-9_]+)', :style => ["Entities4","Root","className"]}
     ],
-    
+
     ## Double string state
   :DoubleString => [
       {:pattern => '\#\{.*?\}', :style => "Entities"},
       {:pattern => '\\\\\d', :style => "Entities"},
       {:pattern => '(?<!\\\\)"', :style => "DoubleString", :action => "#pop"}
     ],
-    
+
     ## Single string state
   :SingleString => [
       {:pattern => '\\\d', :style => "Entities"},
       {:pattern => "(?<!\\\\)'", :style => "SingleString", :action => "#pop"}
     ],
-    
+
     ## Comment block state
   :BlockComment => [
       {:pattern => /(\b(?:(?:https?|ftp):\/\/|mailto:)\S*[^\s!"\'',.:;?])/, :style => "Url"},
       {:pattern => '"', :style => "DoubleString", :action => "DoubleString"},
       {:pattern => '=end', :style => "BlockComment", :action => "#pop"}
     ],
-    
+
     ## Regexps
   :regexp       => [
       {:pattern => '(?<!\\\\)(\/)([mox]*)?', :style => ["Regex","RegexOptions"], :action => "#pop"},
       {:pattern => '(\\\\\\\\\/)([mox]*)?', :style => ["Regex","RegexOptions"], :action => "#pop"},
       {:pattern => '\#\{.*?\}', :style => "Entities"}
                       ],
-                      
+
     # ToEnd
     :ToEnd => [],
   }
-  
+
   end
 
 end # Module

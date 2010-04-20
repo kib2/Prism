@@ -1,0 +1,35 @@
+  <html>
+   <head>
+       <link rel="Stylesheet" type="text/css" href="main.css" />
+   </head>
+   <body>
+        <div class="default">
+          <pre class="code">
+<span class="Keywords">require</span> <span class="SingleString">'</span><span class="SingleString">rubygems</span><span class="SingleString">'</span>  
+<span class="Keywords">require</span> <span class="SingleString">'</span><span class="SingleString">benchmark</span><span class="SingleString">'</span>  
+<span class="Keywords">require</span> <span class="SingleString">'</span><span class="SingleString">coderay</span><span class="SingleString">'</span>  
+<span class="Keywords">require</span> <span class="SingleString">'</span><span class="SingleString">uv</span><span class="SingleString">'</span>  
+  
+path <span class="Operators">=</span> <span class="Special">__FILE__</span>  
+content <span class="Operators">=</span> <span class="Keywords2">File</span><span class="Operators">.</span>read<span class="Pars">(</span><span class="Special">__FILE__</span><span class="Pars">)</span>  
+  
+<span class="Comment"># run it once to initialize  </span>
+CodeRay<span class="Operators">.</span>scan<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">print 'hello'</span><span class="DoubleString">&quot;</span><span class="Pars">,</span>  <span class="SingleString">'</span><span class="SingleString">ruby</span><span class="SingleString">'</span><span class="Pars">)</span><span class="Operators">.</span>div<span class="Pars">(</span><span class="Operators">:</span><span class="Types">css</span> <span class="Operators">=</span><span class="Operators">&gt;</span> <span class="Operators">:</span><span class="Types">class</span><span class="Pars">)</span>  
+Uv<span class="Operators">.</span>parse<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">print 'test'</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="SingleString">'</span><span class="SingleString">xhtml</span><span class="SingleString">'</span><span class="Pars">,</span> <span class="SingleString">'</span><span class="SingleString">ruby</span><span class="SingleString">'</span><span class="Pars">,</span> <span class="Logic">true</span><span class="Pars">,</span> <span class="SingleString">'</span><span class="SingleString">amy</span><span class="SingleString">'</span><span class="Pars">)</span>  
+  
+Benchmark<span class="Operators">.</span>bm<span class="Pars">(</span><span class="Special">11</span><span class="Pars">)</span> <span class="Keywords3">do</span> <span class="Operators">|</span>b<span class="Operators">|</span>  
+  b<span class="Operators">.</span>report <span class="SingleString">'</span><span class="SingleString">coderay</span><span class="SingleString">'</span> <span class="Keywords3">do</span>  
+    <span class="Number">50.</span>times <span class="Pars">{</span> CodeRay<span class="Operators">.</span>scan<span class="Pars">(</span>content<span class="Pars">,</span> <span class="SingleString">'</span><span class="SingleString">ruby</span><span class="SingleString">'</span><span class="Pars">)</span><span class="Operators">.</span>div<span class="Pars">(</span><span class="Operators">:</span><span class="Types">css</span> <span class="Operators">=</span><span class="Operators">&gt;</span> <span class="Operators">:</span><span class="Types">class</span><span class="Pars">)</span> <span class="Pars">}</span>  
+  <span class="Keywords">end</span>  
+    
+  b<span class="Operators">.</span>report<span class="Pars">(</span><span class="SingleString">'</span><span class="SingleString">ultraviolet</span><span class="SingleString">'</span><span class="Pars">)</span> <span class="Keywords3">do</span>  
+    <span class="Number">50.</span>times <span class="Pars">{</span> Uv<span class="Operators">.</span>parse<span class="Pars">(</span>content<span class="Pars">,</span> <span class="SingleString">'</span><span class="SingleString">xhtml</span><span class="SingleString">'</span><span class="Pars">,</span> <span class="SingleString">'</span><span class="SingleString">ruby</span><span class="SingleString">'</span><span class="Pars">,</span> <span class="Logic">true</span><span class="Pars">,</span> <span class="SingleString">'</span><span class="SingleString">amy</span><span class="SingleString">'</span><span class="Pars">)</span> <span class="Pars">}</span>  
+  <span class="Keywords">end</span>  
+    
+  b<span class="Operators">.</span>report<span class="Pars">(</span><span class="SingleString">'</span><span class="SingleString">pygments</span><span class="SingleString">'</span><span class="Pars">)</span> <span class="Keywords3">do</span>  
+    <span class="Number">50.</span>times <span class="Pars">{</span> `pygmentize <span class="Operators">-</span>f html <span class="DoubleString">&quot;</span><span class="Entities">#{path}</span><span class="DoubleString">&quot;</span>` <span class="Pars">}</span>  
+  <span class="Keywords">end</span>  
+<span class="Keywords">end</span>          </pre>
+        </div>
+   </body>
+  </html>

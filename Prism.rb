@@ -3,7 +3,7 @@
 
 ## Prism.rb: a Generic Code Highlighter for Ruby
 ## Version: 1.0.0
-## Started: April 04, 2010    
+## Started: April 04, 2010
 ## Last changes: April 04, 2010
 ## Author: Kibleur Christophe.
 ## Website: http://kib2.free.fr/
@@ -15,15 +15,15 @@ require 'cgi' # Only for escaping HTML texts
 ## =============================================================================
 
 class HtmlFormatter
-    # The formatter is used by the highlighter to render 
+    # The formatter is used by the highlighter to render
     # a line of text to a given format
-    attr_accessor :parent 
+    attr_accessor :parent
     attr_reader :parent
 
     def initialize()
       @parent = nil
     end
-      
+
     def highlight(text, thestate)
         # We escape the text
         q = CGI.escapeHTML(text)
@@ -34,7 +34,7 @@ class HtmlFormatter
         else
             ln = "<span class=\"#{thestate}\">#{q}</span>"
         end
-        
+
         ln
     end
 end
@@ -43,13 +43,13 @@ end
 ##                            Highlighter Class
 ## =============================================================================
 class HL
-    attr_accessor :formatter, :language, :allRules, :callBacks, :states, :styles, :was_transit 
+    attr_accessor :formatter, :language, :allRules, :callBacks, :states, :styles, :was_transit
     attr_reader :formatter, :language, :allRules, :callBacks, :states, :styles, :was_transit
-  
+
     def initialize(formatter, language)
       @formatter = formatter
       @language  = language
-      
+
       # others
       @grammars = {} # Keeps track of the grammars we use (not to load them twice)
       @allRules = nil
@@ -58,13 +58,13 @@ class HL
       @states = [] # will be filled at the end of initialize
       @styles = ['Root']
       @was_transit = false
-      
+
       # setting the formatter and loading syntax
       @formatter.parent = self
       load_syntax_def(@language.capitalize)
       @states.push( "#{@language}_root")
     end
-    
+
     def load_syntax_def(lang)
       # Check if language is already in @grammars
       if @grammars.key?(lang.to_sym)
@@ -108,13 +108,13 @@ class HL
         longest = 0
         match   = false
         style   = nil
-        me = { 
+        me = {
            :start => nil, :ends =>  nil, :rule    => nil,
            :match => nil, :style => nil, :pop     => false,
            :push  => nil, :reg   => nil, :transit => nil,
-           :callback => nil, :prio => false 
+           :callback => nil, :prio => false
              }
- 
+
         @allRules[(@states[-1]).to_sym].each do |r|
             reg  = r[:pattern]
             prio = r[:prio]
@@ -132,14 +132,14 @@ class HL
                 end
             end
         end
-        
+
         if match
             # CALLBACKS rules
             if me[:rule].key?(:callback)
               #self.send(me[:rule][:callback], me[:reg])
-              self.send(me[:rule][:callback], me[:reg])
+              self.send(me[:rule][:callback], me) #[:reg])
             end
-            
+
             # "action" is a state change (maybeseveral)
             if me[:rule].has_key?(:action)
                 if me[:rule][:action] == "#pop"
@@ -159,34 +159,34 @@ class HL
         end
         return me
     end
-    
+
     def highlightLine(line)
         # Just highlights the given text with thehelp
         # of a correspondingFormatter
-        
+
         # This test is used if a line isempty
         # and a rule is set to match it (ie wikisyntax)
         # we must then handle state changequickly
         me = getNextMatch(line)
-        if line == '' 
-            handlePush_Pop(me) 
+        if line == ''
+            handlePush_Pop(me)
             return ""
         end
-        
+
         out = []
 
          while me = getNextMatch(line)
 
-            if me[:start] != me[:ends] # start pos != end pos   
+            if me[:start] != me[:ends] # start pos != end pos
                 if me[:reg] # a rulematched
                     # highlight the part before the match
                     if (me[:start]-1) >= 0
                       color = getStyle(me)
                       out << @formatter.highlight(line[0..(me[:start]-1)], color) #@styles[-1])
                     end
-                    
-                    # highlight withgroup 
-                    if me[:style].class == Array 
+
+                    # highlight withgroup
+                    if me[:style].class == Array
                         num_of_times = me[:reg].captures.length
                         (1..num_of_times).each do |j|
                             cts = me[:reg][j] #line[ me.reg[j] ]
@@ -194,7 +194,7 @@ class HL
                         end
                         handlePush_Pop(me)
                     # highlight without groups
-                    else  
+                    else
                         out << @formatter.highlight( line[me[:start]..(me[:ends]-1)], me[:style])
                         handlePush_Pop(me)
                     end
@@ -207,15 +207,15 @@ class HL
                 line = line[me[:ends]..line.length]
             else # we are at theend
                 # self.handlePush_Pop(me)
-                break 
+                break
             end # if me.reg
         end #while
 
         return out.join("")
     end
-    ## 
+    ##
     ## ==== STATE AND STYLE UPDATE METHODS
-    ## 
+    ##
     def handlePush_Pop(me)
         # we enter a new state, so save laststyle
         if me[:push]
@@ -229,13 +229,13 @@ class HL
             end
             updateStyle(me)
         end
-                    
+
         # Pop a state?
         if me[:pop]
-            if @states.length > 1 
+            if @states.length > 1
               @states.pop()
             end
-            if @styles.length > 1 
+            if @styles.length > 1
               @styles.pop()
             end
             # Style transitions between state changes : experimental!
@@ -245,7 +245,7 @@ class HL
             #end
         end
     end
-    
+
     def updateStyle(me)
         # When we change state, the next style is
         # set to the previous one by default.
@@ -268,7 +268,7 @@ class HL
       r = @lastStyle
       if r != nil
         @lastStyle = nil
-      else 
+      else
         r = @styles[-1]
       end
       return r
@@ -279,9 +279,9 @@ class HL
     #
     def from_string(code_in_text)
       code_in_text.gsub("\r\n", "\n")
-      from_list(code_in_text.split("\n"))    
+      from_list(code_in_text.split("\n"))
     end
-    
+
     def from_list(code_in_array)
       num_of_lines = 0
       out = []
@@ -291,7 +291,7 @@ class HL
       end
       out.join("\n")
     end
-    
+
     def from_file(in_file, out_file)
       num_of_lines = 0
       header = <<-eos
@@ -303,14 +303,14 @@ class HL
         <div class="default">
           <pre class="code">
       eos
-  
+
       footer = <<-eos
           </pre>
         </div>
    </body>
   </html>
       eos
-  
+
       out = []
       s = File.size(in_file)
       File.open(in_file, 'r') do |f|
@@ -319,11 +319,11 @@ class HL
           out << highlightLine(line)
         end
       end
-  
+
       File.open(out_file, "w") do |f|
         f << header + out.join("") + footer
       end
-  
+
       puts "Output save in '#{out_file}' [total lines: #{num_of_lines}, Size: #{s}]"
       puts
     end

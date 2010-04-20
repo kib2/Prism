@@ -9,7 +9,7 @@ module ErbLang
   
   # General Delimited Strings Callback
   def cb_gds(my_reg)
-    pattern = my_reg[2]
+    pattern = my_reg[:reg][2]
     
     if ['[','(','{'].include?(pattern)
       pattern = {'[' => ']','(' => ')','{' => '}'}[pattern]
@@ -27,7 +27,7 @@ module ErbLang
   
   # Here Documents Callback
   def cb_hd(my_reg)
-    pattern = my_reg[2]
+    pattern = my_reg[:reg][2]
     puts "AVANT: #{pattern}"
     ["'",'"','`','-'].each do |chr|
       pattern = pattern.gsub(chr,'')

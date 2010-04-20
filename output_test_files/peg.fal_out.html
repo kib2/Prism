@@ -1,0 +1,1213 @@
+  <html>
+   <head>
+       <link rel="Stylesheet" type="text/css" href="main.css" />
+   </head>
+   <body>
+        <div class="default">
+          <pre class="code">
+<span class="BlockComment">/*</span><span class="BlockComment">
+</span><span class="BlockComment">P.E.G [Parsing Expression Grammar] library for the Falcon PL 0.9.x.
+</span><span class="BlockComment">
+</span><span class="BlockComment">Original version by Chris Double in JavaScript.
+</span><span class="BlockComment">See his post here for more details:
+</span><span class="BlockComment">See </span><span class="Url"><a href="http://www.bluishcoder.co.nz/2007/10/javascript-parser-combinators.html">http://www.bluishcoder.co.nz/2007/10/javascript-parser-combinators.html</a></span><span class="BlockComment">
+</span><span class="BlockComment">Chris then build a Factor PEG lib wich is now used inside the Factor PL.
+</span><span class="BlockComment">
+</span><span class="BlockComment">I saw a nice subject in the Deutsch Python forum, but seems like it has
+</span><span class="BlockComment">never been read:
+</span><span class="Url"><a href="http://www.python-forum.de/topic-13554.html?sid=bf474f4b57e49fa617023529a8187d16">http://www.python-forum.de/topic-13554.html?sid=bf474f4b57e49fa617023529a8187d16</a></span><span class="BlockComment">
+</span><span class="BlockComment">
+</span><span class="BlockComment">Copyright (C) 2009 Kibleur Christophe.
+</span><span class="BlockComment">
+</span><span class="BlockComment">Redistribution and use in source and binary forms, with or without
+</span><span class="BlockComment">modification, are permitted provided that the following conditions are met:
+</span><span class="BlockComment">
+</span><span class="BlockComment">1. Redistributions of source code must retain the above copyright notice,
+</span><span class="BlockComment">   this list of conditions and the following disclaimer.
+</span><span class="BlockComment">
+</span><span class="BlockComment">2. Redistributions in binary form must reproduce the above copyright notice,
+</span><span class="BlockComment">   this list of conditions and the following disclaimer in the documentation
+</span><span class="BlockComment">   and/or other materials provided with the distribution.
+</span><span class="BlockComment">
+</span><span class="BlockComment">THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+</span><span class="BlockComment">INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+</span><span class="BlockComment">FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+</span><span class="BlockComment">DEVELOPERS AND CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+</span><span class="BlockComment">SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+</span><span class="BlockComment">PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+</span><span class="BlockComment">OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+</span><span class="BlockComment">WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+</span><span class="BlockComment">OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+</span><span class="BlockComment">ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+</span><span class="BlockComment">*/</span>
+
+<span class="BlockComment">/*</span><span class="BlockComment">
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">                            GLOBALS
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">*/</span>
+
+memoize <span class="Operators">=</span> <span class="Special">true</span>
+parser_id <span class="Operators">=</span> <span class="Integer">0</span>
+
+<span class="BlockComment">/*</span><span class="BlockComment">
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">                            HELPER FUNCTIONS
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">*/</span>
+<span class="Entities2">function</span> <span class="funcName">identity</span><span class="Pars">(</span>x<span class="Pars">)</span>
+    <span class="Keywords2">return</span> x
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">foldl</span><span class="Pars">(</span>f<span class="Pars">,</span> initial<span class="Pars">,</span> seq<span class="Pars">)</span>
+    <span class="Keywords">for</span> el <span class="Logic">in</span> seq
+        initial <span class="Operators">=</span> f<span class="Pars">(</span>initial<span class="Pars">,</span> el<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> initial
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">ps</span><span class="Pars">(</span>text<span class="Pars">)</span>
+    <span class="Keywords2">return</span> ParseState<span class="Pars">(</span>text<span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// 'r' is the remaining string to be parsed.</span>
+<span class="Comment">// 'matched' is the portion of the string that</span>
+<span class="Comment">//  was successfully matched by the parser.</span>
+<span class="Comment">// 'ast' is the AST returned by the successfull parse.</span>
+<span class="Entities2">function</span> <span class="funcName">make_result</span><span class="Pars">(</span>r<span class="Pars">,</span> matched<span class="Pars">,</span> ast<span class="Pars">)</span>
+    <span class="Keywords2">return</span> <span class="Pars">[</span> <span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> r<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> matched<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> ast <span class="Pars">]</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// To convert string literals to token parsers</span>
+<span class="Comment">// and perform other implicit parser conversions.</span>
+<span class="Entities2">function</span> <span class="funcName">toParser</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    <span class="Comment">// String type is 20</span>
+    <span class="Keywords">if</span> typeOf<span class="Pars">(</span>p<span class="Pars">)</span> <span class="Operators">=</span><span class="Operators">=</span> <span class="Integer">8</span>
+        <span class="Keywords2">return</span> Token<span class="Pars">(</span>p<span class="Pars">)</span>
+    <span class="Keywords">else</span>
+        <span class="Keywords2">return</span> p
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Given a parser that produces an array as an ast, returns a</span>
+<span class="Comment">// parser that produces an ast with the array joined by a separator.</span>
+<span class="Entities2">function</span> <span class="funcName">join_action</span><span class="Pars">(</span>p<span class="Pars">,</span> sep<span class="Pars">)</span>
+    f <span class="Operators">=</span> function <span class="Pars">(</span>ast<span class="Pars">)</span>
+        <span class="Comment">// return ast.join(sep)</span>
+        <span class="Keywords2">return</span> joinStr<span class="Pars">(</span>ast<span class="Pars">,</span> sep<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Keywords2">return</span> Action<span class="Pars">(</span>p<span class="Pars">,</span> f<span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Given an ast of the form [ Expression, [ a, b, ...] ], convert to</span>
+<span class="Comment">// [ [ [ Expression [ a ] ] b ] ... ]</span>
+<span class="Comment">// This is used for handling left recursive entries in the grammar. e.g.</span>
+<span class="Comment">// MemberExpression:</span>
+<span class="Comment">//   PrimaryExpression</span>
+<span class="Comment">//   FunctionExpression</span>
+<span class="Comment">//   MemberExpression [ Expression ]</span>
+<span class="Comment">//   MemberExpression . Identifier</span>
+<span class="Comment">//   new MemberExpression Arguments</span>
+<span class="Entities2">function</span> <span class="funcName">left_factor</span><span class="Pars">(</span>ast<span class="Pars">)</span>
+    f <span class="Operators">=</span> function<span class="Pars">(</span>v<span class="Pars">,</span> action<span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Pars">[</span> v<span class="Pars">,</span> action <span class="Pars">]</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> foldl<span class="Pars">(</span>f<span class="Pars">,</span>ast<span class="Pars">[</span><span class="Integer">0</span><span class="Pars">]</span><span class="Pars">,</span>ast<span class="Pars">[</span><span class="Integer">1</span><span class="Pars">]</span><span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Return a parser that left factors the ast result of the original</span>
+<span class="Comment">// parser.</span>
+<span class="Entities2">function</span> <span class="funcName">left_factor_action</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    <span class="Keywords2">return</span> Action<span class="Pars">(</span>p<span class="Pars">,</span> left_factor<span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// 'end_p' is a parser that is successful if the input string</span>
+<span class="Comment">// is empty (ie. end of parse).</span>
+<span class="Entities2">function</span> <span class="funcName">end_p</span><span class="Pars">(</span>state<span class="Pars">)</span>
+    <span class="Keywords">if</span> state.length <span class="Operators">=</span><span class="Operators">=</span> <span class="Integer">0</span>
+        <span class="Keywords2">return</span> make_result<span class="Pars">(</span>state<span class="Pars">,</span> <span class="Special">nil</span><span class="Pars">,</span> <span class="Special">nil</span><span class="Pars">)</span>
+    <span class="Keywords">else</span>
+        <span class="Keywords2">return</span> <span class="Special">false</span>
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// 'nothing_p' is a parser that always fails.</span>
+<span class="Entities2">function</span> <span class="funcName">nothing_p</span><span class="Pars">(</span>state<span class="Pars">)</span>
+    <span class="Keywords2">return</span> <span class="Special">false</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// A parser combinator that ensures that the given parser succeeds but</span>
+<span class="Comment">// ignores its result. This can be useful for parsing literals that you</span>
+<span class="Comment">// don't want to appear in the ast. eg:</span>
+<span class="Comment">// sequence(expect(&quot;(&quot;), Number, expect(&quot;)&quot;)) =&gt; ast: Number</span>
+<span class="Entities2">function</span> <span class="funcName">expect</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    p <span class="Operators">=</span> toParser<span class="Pars">(</span>p<span class="Pars">)</span>
+    f <span class="Operators">=</span> function<span class="Pars">(</span>ast<span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Special">nil</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> Action<span class="Pars">(</span>p<span class="Pars">,</span> f<span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">chain</span><span class="Pars">(</span>p<span class="Pars">,</span> s<span class="Pars">,</span> f<span class="Pars">)</span>
+    p <span class="Operators">=</span> toParser<span class="Pars">(</span>p<span class="Pars">)</span>
+    g <span class="Operators">=</span> function<span class="Pars">(</span>ast<span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Pars">[</span>ast<span class="Pars">[</span><span class="Integer">0</span><span class="Pars">]</span><span class="Pars">]</span> <span class="Operators">+</span> ast<span class="Pars">[</span><span class="Integer">1</span><span class="Pars">]</span>
+        <span class="Comment">// return [ast[0] + ast[1]]</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> Action<span class="Pars">(</span> Seq<span class="Pars">(</span><span class="Pars">[</span>p<span class="Pars">,</span> Repeat0<span class="Pars">(</span> Action<span class="Pars">(</span> Seq<span class="Pars">(</span><span class="Pars">[</span>s<span class="Pars">,</span> p<span class="Pars">]</span><span class="Pars">)</span><span class="Pars">,</span> f<span class="Pars">)</span><span class="Pars">)</span><span class="Pars">]</span><span class="Pars">)</span><span class="Pars">,</span> g<span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// A parser combinator to do left chaining and evaluation.</span>
+<span class="Comment">// Like chain, it expects a parser for an item and one for a seperator.</span>
+<span class="Comment">// The separator parser's AST result should be a function of the form:</span>
+<span class="Comment">// function(lhs,rhs) { return x; }</span>
+<span class="Comment">// Where 'x' is the result of applying some operation to the lhs and rhs</span>
+<span class="Comment">// AST's from the item parser.</span>
+<span class="Entities2">function</span> <span class="funcName">chainl</span><span class="Pars">(</span>p<span class="Pars">,</span> s<span class="Pars">)</span>
+    p <span class="Operators">=</span> toParser<span class="Pars">(</span>p<span class="Pars">)</span>
+
+    h <span class="Operators">=</span> function<span class="Pars">(</span>v<span class="Pars">,</span> action<span class="Pars">)</span>
+        <span class="Keywords2">return</span> action<span class="Pars">[</span><span class="Integer">0</span><span class="Pars">]</span><span class="Pars">(</span>v<span class="Pars">,</span> action<span class="Pars">[</span><span class="Integer">1</span><span class="Pars">]</span><span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    g <span class="Operators">=</span> function<span class="Pars">(</span>ast<span class="Pars">)</span>
+        <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">chainl AST: </span><span class="DoubleString">&quot;</span><span class="Pars">,</span><span class="Keywords">inspect</span><span class="Pars">(</span>ast<span class="Pars">)</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> foldl<span class="Pars">(</span>h<span class="Pars">,</span> ast<span class="Pars">[</span><span class="Integer">0</span><span class="Pars">]</span><span class="Pars">,</span> ast<span class="Pars">[</span><span class="Integer">1</span><span class="Pars">]</span><span class="Pars">)</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> Action<span class="Pars">(</span> Seq<span class="Pars">(</span><span class="Pars">[</span>p<span class="Pars">,</span> Repeat0<span class="Pars">(</span>Seq<span class="Pars">(</span><span class="Pars">[</span>s<span class="Pars">,</span> p<span class="Pars">]</span><span class="Pars">)</span><span class="Pars">)</span><span class="Pars">]</span> <span class="Pars">)</span><span class="Pars">,</span> g<span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// A parser combinator that returns a parser that matches lists of things.</span>
+<span class="Comment">// The parser to match the list item and the parser to match the seperator</span>
+<span class="Comment">// need to be provided. The AST is the array of matched items.</span>
+<span class="Entities2">function</span> <span class="funcName">list</span><span class="Pars">(</span>p<span class="Pars">,</span> s<span class="Pars">)</span>
+    f <span class="Operators">=</span> function <span class="Pars">(</span>ast<span class="Pars">)</span>
+        <span class="Keywords2">return</span> ast<span class="Pars">[</span><span class="Integer">1</span><span class="Pars">]</span>
+    <span class="Keywords">end</span>
+
+    <span class="Keywords2">return</span> chain<span class="Pars">(</span>p<span class="Pars">,</span> s<span class="Pars">,</span> f<span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Like list, but ignores whitespace between individual parsers.</span>
+<span class="Entities2">function</span> <span class="funcName">wList</span><span class="Pars">(</span>ps<span class="Pars">)</span>
+    parsers <span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+    <span class="Keywords">for</span> p <span class="Logic">in</span> ps
+	    parsers <span class="Operators">+</span><span class="Operators">=</span> Whitespace<span class="Pars">(</span>p<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> list<span class="Pars">(</span><span class="Special">nil</span><span class="Pars">,</span> parsers<span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// A parser that always returns a zero length match</span>
+<span class="Entities2">function</span> <span class="funcName">epsilon_p</span><span class="Pars">(</span>state<span class="Pars">)</span>
+    <span class="Keywords2">return</span> make_result<span class="Pars">(</span>state<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="Special">nil</span><span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// ==== Special functions for output</span>
+<span class="Entities2">function</span> <span class="funcName">prettyPrint</span><span class="Pars">(</span>t<span class="Pars">,</span>text<span class="Pars">)</span>
+    res <span class="Operators">=</span> t.parse<span class="Pars">(</span>text<span class="Pars">)</span>
+    <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">String to match: \n&gt;&gt;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> text.input<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">&lt;&lt;\n</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">===================\n</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">With parser:\n\t</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> t.toString<span class="Pars">(</span><span class="Pars">)</span><span class="Pars">)</span>
+    <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">=============\n</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords">if</span> res
+        <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">Remaining: &gt;&gt;\n\t</span><span class="DoubleString">&quot;</span><span class="Pars">,</span>res<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>.toString<span class="Pars">(</span><span class="Pars">)</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&lt;&lt;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+        <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">Matched: &gt;&gt;\n\t</span><span class="DoubleString">&quot;</span><span class="Pars">,</span>res<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>.toString<span class="Pars">(</span><span class="Pars">)</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&lt;&lt;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+        <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">Ast: &gt;&gt;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span><span class="Keywords">inspect</span><span class="Pars">(</span>res<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span><span class="Pars">]</span><span class="Pars">)</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&lt;&lt;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+        <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">\n</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords">else</span>
+        <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">Matched nothing</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+        <span class="Keywords2">printl</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">\n</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">joinStr</span><span class="Pars">(</span>arr<span class="Pars">,</span> sep<span class="Pars">)</span>
+    res <span class="Operators">=</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">if</span> arr.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span> <span class="Operators">&gt;</span> <span class="Integer">0</span>
+        <span class="Keywords">for</span> el <span class="Logic">in</span> arr
+            <span class="Keywords">formiddle</span><span class="Operators">:</span>res <span class="Operators">+</span><span class="Operators">=</span> <span class="Pars">(</span>el <span class="Operators">+</span> sep<span class="Pars">)</span>
+            <span class="Keywords">forlast</span><span class="Operators">:</span> res <span class="Operators">+</span><span class="Operators">=</span> el
+        <span class="Keywords">end</span>
+    <span class="Keywords">else</span>
+        res <span class="Operators">=</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> res
+<span class="Keywords">end</span>
+
+<span class="Comment">// Jonnymind's contribution to print nested arrays</span>
+<span class="Entities2">function</span> <span class="funcName">prarr</span><span class="Pars">(</span> arr<span class="Pars">,</span> level <span class="Pars">)</span>
+    <span class="Keywords">if</span> <span class="Logic">not</span> level<span class="Operators">:</span> level <span class="Operators">=</span> <span class="Integer">0</span>
+    <span class="Keywords">if</span> arr <span class="Operators">=</span><span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+        <span class="Keywords2">return</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords">for</span> elem <span class="Logic">in</span> arr
+        <span class="Operators">&gt;</span> elem<span class="Pars">,</span>elem.typeId<span class="Pars">(</span><span class="Pars">)</span><span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">--</span><span class="DoubleString">&quot;</span><span class="Pars">,</span><span class="Types">ArrayType</span>
+        <span class="Keywords">if</span> elem.typeId<span class="Pars">(</span><span class="Pars">)</span> <span class="Logic">in</span> <span class="Pars">[</span><span class="Integer">9</span><span class="Pars">]</span> <span class="Operators">:</span> prarr<span class="Pars">(</span> elem<span class="Pars">,</span> level<span class="Operators">+</span><span class="Integer">1</span> <span class="Pars">)</span>
+        <span class="Keywords">if</span> elem.typeId<span class="Pars">(</span><span class="Pars">)</span> <span class="Logic">in</span> <span class="Pars">[</span><span class="Integer">0</span><span class="Pars">]</span> <span class="Operators">:</span> <span class="Keywords2">return</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+        <span class="Operators">&gt;</span><span class="Operators">&gt;</span> strReplicate<span class="Pars">(</span> <span class="DoubleString">&quot;</span><span class="DoubleString"> </span><span class="DoubleString">&quot;</span><span class="Pars">,</span> level <span class="Pars">)</span>
+        <span class="Keywords">if</span> elem <span class="Operators">:</span> <span class="Operators">&gt;</span> elem.toString<span class="Pars">(</span><span class="Pars">)</span>
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+<span class="BlockComment">/*</span><span class="BlockComment">
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">                            PARSER CLASSES
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">*/</span>
+
+<span class="Comment">// The ParserState Class is used to store and manipulate the</span>
+<span class="Comment">// state within the parsing process</span>
+<span class="Entities2">class</span> <span class="className">ParseState</span><span class="Pars">(</span>input<span class="Pars">,</span> index<span class="Pars">)</span>
+    input <span class="Operators">=</span> input
+    index <span class="Operators">=</span> index <span class="Operators">?</span> index <span class="Operators">:</span> <span class="Integer">0</span>
+    cache <span class="Operators">=</span> <span class="Pars">[</span><span class="Operators">=</span><span class="Operators">&gt;</span><span class="Pars">]</span>
+    length <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Special">self</span>.length <span class="Operators">=</span> <span class="Special">self</span>.input.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span> <span class="Operators">-</span> <span class="Special">self</span>.index
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">From</span><span class="Pars">(</span>index<span class="Pars">)</span>
+        r <span class="Operators">=</span> ParseState<span class="Pars">(</span><span class="Special">self</span>.input<span class="Pars">,</span> <span class="Special">self</span>.index <span class="Operators">+</span> index<span class="Pars">)</span>
+        r.cache <span class="Operators">=</span> <span class="Special">self</span>.cache
+        r.length <span class="Operators">=</span> <span class="Special">self</span>.length <span class="Operators">-</span> index
+        <span class="Keywords2">return</span> r
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">substring</span><span class="Pars">(</span>start<span class="Pars">,</span> theend<span class="Pars">)</span>
+        <span class="Keywords">if</span> theend
+            <span class="Keywords2">return</span> <span class="Special">self</span>.input<span class="Pars">[</span>start <span class="Operators">+</span> <span class="Special">self</span>.index<span class="Operators">:</span> theend <span class="Operators">+</span> <span class="Special">self</span>.index<span class="Pars">]</span>
+        <span class="Keywords">else</span>
+            <span class="Keywords">if</span> start <span class="Operators">+</span> <span class="Special">self</span>.index <span class="Operators">!</span><span class="Operators">=</span> <span class="Special">self</span>.length <span class="Operators">+</span> <span class="Special">self</span>.index
+                <span class="Keywords2">return</span> <span class="Special">self</span>.input<span class="Pars">[</span>start <span class="Operators">+</span> <span class="Special">self</span>.index<span class="Operators">:</span> <span class="Special">self</span>.length <span class="Operators">+</span> <span class="Special">self</span>.index<span class="Pars">]</span>
+            <span class="Keywords">else</span>
+                <span class="Keywords2">return</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+            <span class="Keywords">end</span>
+        <span class="Keywords">end</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">trimLeft</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> ParseState<span class="Pars">(</span>strFrontTrim<span class="Pars">(</span><span class="Special">self</span>.substring<span class="Pars">(</span><span class="Integer">0</span><span class="Pars">)</span><span class="Pars">)</span><span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">at</span><span class="Pars">(</span>index<span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Special">self</span>.input<span class="Pars">[</span><span class="Special">self</span>.index <span class="Operators">+</span> index<span class="Pars">]</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="SingleString">'</span><span class="SingleString">PS&quot;</span><span class="SingleString">'</span> <span class="Operators">+</span> <span class="Special">self</span>.substring<span class="Pars">(</span><span class="Integer">0</span><span class="Pars">)</span> <span class="Operators">+</span> <span class="SingleString">'</span><span class="SingleString">&quot;</span><span class="SingleString">'</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">getCached</span><span class="Pars">(</span>pid<span class="Pars">)</span>
+        <span class="Keywords2">global</span> memoize
+        <span class="Keywords">if</span> <span class="Logic">not</span> memoize
+            <span class="Keywords2">return</span> <span class="Special">false</span>
+        <span class="Keywords">end</span>
+        p <span class="Operators">=</span> dictGet<span class="Pars">(</span><span class="Special">self</span>.cache<span class="Pars">,</span> pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> p
+            <span class="Keywords2">return</span> p<span class="Pars">[</span><span class="Special">self</span>.index<span class="Pars">]</span>
+        <span class="Keywords">else</span>
+            <span class="Keywords2">return</span> <span class="Special">false</span>
+        <span class="Keywords">end</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">putCached</span><span class="Pars">(</span>pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">global</span> memoize
+        <span class="Keywords">if</span> memoize
+            <span class="Keywords2">return</span> <span class="Special">false</span>
+        <span class="Keywords">end</span>
+        p <span class="Operators">=</span> dictGet<span class="Pars">(</span><span class="Special">self</span>.cache<span class="Pars">,</span> pid<span class="Pars">)</span>
+
+        <span class="Keywords">if</span> p
+            p<span class="Pars">[</span><span class="Special">self</span>.index<span class="Pars">]</span> <span class="Operators">=</span> cached
+        <span class="Keywords">else</span>
+            p <span class="Operators">=</span> <span class="Pars">[</span><span class="Operators">=</span><span class="Operators">&gt;</span><span class="Pars">]</span>
+            <span class="Special">self</span>.cache<span class="Pars">[</span>pid<span class="Pars">]</span> <span class="Operators">=</span> <span class="Pars">[</span><span class="Operators">=</span><span class="Operators">&gt;</span><span class="Pars">]</span>
+            p<span class="Pars">[</span><span class="Special">self</span>.index<span class="Pars">]</span> <span class="Operators">=</span> cached
+        <span class="Keywords">end</span>
+    <span class="Keywords">end</span>
+
+<span class="Keywords">end</span>
+
+<span class="Comment">// Token is a parser combinator that given a string, returns a parser</span>
+<span class="Comment">// that parses that string value. The AST contains the string that was parsed.</span>
+<span class="Entities2">class</span> <span class="className">Token</span><span class="Pars">(</span>s<span class="Pars">)</span>
+    s <span class="Operators">=</span> s
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Token </span><span class="Entities1">$self</span><span class="DoubleString">.s</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Comment">// parse a ParserState instance</span>
+    <span class="Comment">// returns nil or a dic like</span>
+    <span class="Comment">// [ &quot;remaining&quot; =&gt; ParserState, &quot;matched&quot; =&gt; string, &quot;ast&quot; =&gt; string ]</span>
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        r <span class="Operators">=</span> state.length <span class="Operators">&gt;</span><span class="Operators">=</span> <span class="Special">self</span>.s.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span> <span class="Logic">and</span> state.substring<span class="Pars">(</span><span class="Integer">0</span><span class="Pars">,</span><span class="Special">self</span>.s.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span><span class="Pars">)</span> <span class="Operators">=</span><span class="Operators">=</span> <span class="Special">self</span>.s
+
+        <span class="Keywords">if</span> r
+            cached <span class="Operators">=</span> <span class="Pars">[</span> <span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> state.From<span class="Pars">(</span><span class="Special">self</span>.s.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span><span class="Pars">)</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> <span class="Special">self</span>.s<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> <span class="Special">self</span>.s <span class="Pars">]</span>
+        <span class="Keywords">else</span>
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">end</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Char is like Token but for a single character. Returns a parser that given</span>
+<span class="Comment">// a string containing a single character, parses that character value.</span>
+<span class="Entities2">class</span> <span class="className">Char</span><span class="Pars">(</span>c<span class="Pars">)</span>
+    c <span class="Operators">=</span> c
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Char </span><span class="Entities1">$self</span><span class="DoubleString">.c</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        r <span class="Operators">=</span> state.length <span class="Operators">&gt;</span><span class="Operators">=</span> <span class="Integer">1</span> <span class="Logic">and</span> state.at<span class="Pars">(</span><span class="Integer">0</span><span class="Pars">)</span> <span class="Operators">=</span><span class="Operators">=</span> <span class="Special">self</span>.c
+
+        <span class="Keywords">if</span> r
+            cached <span class="Operators">=</span> <span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> state.From<span class="Pars">(</span><span class="Integer">1</span><span class="Pars">)</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> <span class="Special">self</span>.c<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> <span class="Special">self</span>.c<span class="Pars">]</span>
+        <span class="Keywords">else</span>
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">end</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Range is a parser combinator that returns a single character parser</span>
+<span class="Comment">// (similar to 'ch'). It parses single characters that are in the inclusive</span>
+<span class="Comment">// range of the 'lower' and 'upper' bounds (&quot;a&quot; to &quot;z&quot; for example).</span>
+<span class="Entities2">class</span> <span class="className">Range</span><span class="Pars">(</span>lower<span class="Pars">,</span> upper<span class="Pars">)</span>
+    lower <span class="Operators">=</span> lower
+    upper <span class="Operators">=</span> upper
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Token </span><span class="Entities1">$self</span><span class="DoubleString">.lower </span><span class="Entities1">$self</span><span class="DoubleString">.upper</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        <span class="Keywords">if</span> state.length <span class="Operators">&lt;</span> <span class="Integer">1</span>
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">else</span>
+            ch <span class="Operators">=</span> state.at<span class="Pars">(</span><span class="Integer">0</span><span class="Pars">)</span>
+            <span class="Keywords">if</span> ch <span class="Operators">&gt;</span><span class="Operators">=</span> <span class="Special">self</span>.lower <span class="Logic">and</span> ch <span class="Operators">&lt;</span><span class="Operators">=</span> <span class="Special">self</span>.upper
+                cached <span class="Operators">=</span> <span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> state.From<span class="Pars">(</span><span class="Integer">1</span><span class="Pars">)</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> ch<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span> <span class="Operators">=</span><span class="Operators">&gt;</span> ch<span class="Pars">]</span>
+            <span class="Keywords">else</span>
+                cached <span class="Operators">=</span> <span class="Special">false</span>
+            <span class="Keywords">end</span>
+        <span class="Keywords">end</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Whitespace parser combinator that takes a parser as input and</span>
+<span class="Comment">// returns a parser that skips whitespace before applying parser.</span>
+<span class="Entities2">class</span> <span class="className">Whitespace</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    p <span class="Operators">=</span> toParser<span class="Pars">(</span>p<span class="Pars">)</span>
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Whitespace </span><span class="Entities1">$self</span><span class="DoubleString">.p.toString()</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> <span class="Special">self</span>.p.parse<span class="Pars">(</span>state.trimLeft<span class="Pars">(</span><span class="Pars">)</span><span class="Pars">)</span>
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Action is a parser combinator that passes the AST generated from the</span>
+<span class="Comment">// parser 'p' to the function 'f'.</span>
+<span class="Comment">// The result of 'f' is used as the AST in the result.</span>
+<span class="Entities2">class</span> <span class="className">Action</span><span class="Pars">(</span>p<span class="Pars">,</span> f<span class="Pars">)</span>
+    p <span class="Operators">=</span> toParser<span class="Pars">(</span>p<span class="Pars">)</span>
+    f <span class="Operators">=</span> f
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Action </span><span class="Entities1">$self</span><span class="DoubleString">.p </span><span class="Entities1">$self</span><span class="DoubleString">.f</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        x <span class="Operators">=</span> <span class="Special">self</span>.p.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+        <span class="Keywords">if</span> x
+            x<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span><span class="Pars">]</span> <span class="Operators">=</span> <span class="Special">self</span>.f<span class="Pars">(</span>x<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span><span class="Pars">]</span><span class="Pars">)</span>
+            cached <span class="Operators">=</span> x
+        <span class="Keywords">else</span>
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">end</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Negate will negate a single character parser. So given 'ch(&quot;a&quot;)' it will</span>
+<span class="Comment">// successfully parse any character except for 'a'. Or 'Negate(Range(&quot;a&quot;, &quot;z&quot;))'</span>
+<span class="Comment">// will successfully parse anything except the lowercase characters a-z.</span>
+<span class="Entities2">class</span> <span class="className">Negate</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    p <span class="Operators">=</span> toParser<span class="Pars">(</span>p<span class="Pars">)</span>
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Negate </span><span class="Entities1">$self</span><span class="DoubleString">.p</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        <span class="Keywords">if</span> state.length <span class="Operators">&gt;</span><span class="Operators">=</span> <span class="Integer">1</span>
+            r <span class="Operators">=</span> <span class="Special">self</span>.p.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+            <span class="Keywords">if</span> <span class="Logic">not</span> r
+                cached <span class="Operators">=</span>  make_result<span class="Pars">(</span>state.From<span class="Pars">(</span><span class="Integer">1</span><span class="Pars">)</span><span class="Pars">,</span> state.at<span class="Pars">(</span><span class="Integer">0</span><span class="Pars">)</span><span class="Pars">,</span> state.at<span class="Pars">(</span><span class="Integer">0</span><span class="Pars">)</span><span class="Pars">)</span>
+            <span class="Keywords">else</span>
+                cached <span class="Operators">=</span> <span class="Special">false</span>
+            <span class="Keywords">end</span>
+        <span class="Keywords">else</span>
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">end</span>
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Seq is a parser combinator that processes a number of parsers in sequence.</span>
+<span class="Comment">// It can take any number of arguments, each one being a parser.</span>
+<span class="Comment">// The parser that 'sequence' returns succeeds if all the parsers</span>
+<span class="Comment">// in the sequence succeeds. It fails if any of them fail.</span>
+<span class="Entities2">class</span> <span class="className">Seq</span><span class="Pars">(</span>ps<span class="Pars">)</span>
+    parsers <span class="Operators">=</span> ps
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        t <span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+        <span class="Keywords">for</span> s <span class="Logic">in</span> <span class="Special">self</span>.parsers
+            t <span class="Operators">+</span><span class="Operators">=</span> toParser<span class="Pars">(</span>s<span class="Pars">)</span>
+        <span class="Keywords">end</span>
+        <span class="Special">self</span>.parsers <span class="Operators">=</span> t
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span> <span class="DoubleString">&quot;</span><span class="DoubleString">Seq </span><span class="Entities1">$self</span><span class="DoubleString">.parsers</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        ast <span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+        matched <span class="Operators">=</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+        i <span class="Operators">=</span> <span class="Integer">0</span>
+        <span class="Keywords">for</span> parser <span class="Logic">in</span> <span class="Special">self</span>.parsers
+
+            result <span class="Operators">=</span> parser.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+            <span class="Keywords">if</span> result
+                state <span class="Operators">=</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>
+                <span class="Keywords">if</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span><span class="Pars">]</span> <span class="Operators">!</span><span class="Operators">=</span> <span class="Special">nil</span>
+                    ast <span class="Operators">+</span><span class="Operators">=</span> <span class="Pars">[</span>result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span><span class="Pars">]</span><span class="Pars">]</span>
+                    matched <span class="Operators">+</span><span class="Operators">=</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>
+                <span class="Keywords">end</span>
+            <span class="Keywords">else</span>
+                <span class="Keywords">break</span>
+            <span class="Keywords">end</span>
+            i <span class="Operators">+</span><span class="Operators">=</span> <span class="Integer">1</span>
+        <span class="Keywords">end</span>
+
+        <span class="Keywords">if</span> i <span class="Operators">=</span><span class="Operators">=</span> <span class="Special">self</span>.parsers.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span>
+            cached <span class="Operators">=</span> make_result<span class="Pars">(</span>state<span class="Pars">,</span> matched<span class="Pars">,</span> ast<span class="Pars">)</span>
+        <span class="Keywords">else</span>
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">end</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Like Seq, but ignores whitespace between individual parsers.</span>
+<span class="Entities2">class</span> <span class="className">wSeq</span><span class="Pars">(</span>ps<span class="Pars">)</span>
+    parsers <span class="Operators">=</span> ps
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        t <span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+        <span class="Keywords">for</span> s <span class="Logic">in</span> <span class="Special">self</span>.parsers
+            t <span class="Operators">+</span><span class="Operators">=</span> Whitespace<span class="Pars">(</span>toParser<span class="Pars">(</span>s<span class="Pars">)</span><span class="Pars">)</span>
+        <span class="Keywords">end</span>
+        <span class="Special">self</span>.parsers <span class="Operators">=</span> t
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">wSeq </span><span class="Entities1">$self</span><span class="DoubleString">.parsers</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>text<span class="Pars">)</span>
+        p <span class="Operators">=</span> Seq<span class="Pars">(</span><span class="Special">self</span>.parsers<span class="Pars">)</span>
+        <span class="Keywords2">return</span> p.parse<span class="Pars">(</span>text<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+<span class="Keywords">end</span>
+
+<span class="Comment">// Choice is a parser combinator that provides a choice between other parsers.</span>
+<span class="Comment">// It takes any number of parsers as arguments and returns a parser that will</span>
+<span class="Comment">// try each of the given parsers in order. The first one that succeeds results</span>
+<span class="Comment">// in a successfull parse. It fails if all parsers fail.</span>
+<span class="Entities2">class</span> <span class="className">Choice</span><span class="Pars">(</span>ps<span class="Pars">)</span>
+    parsers <span class="Operators">=</span> ps
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        t <span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+        <span class="Keywords">for</span> s <span class="Logic">in</span> <span class="Special">self</span>.parsers
+            t <span class="Operators">+</span><span class="Operators">=</span> toParser<span class="Pars">(</span>s<span class="Pars">)</span>
+        <span class="Keywords">end</span>
+        <span class="Special">self</span>.parsers <span class="Operators">=</span> t
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Choice </span><span class="Entities1">$self</span><span class="DoubleString">.parsers</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        i <span class="Operators">=</span> <span class="Integer">0</span>
+        <span class="Keywords">for</span> parser <span class="Logic">in</span> <span class="Special">self</span>.parsers
+            result <span class="Operators">=</span> parser.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+            <span class="Keywords">if</span> result
+                <span class="Keywords">break</span>
+            <span class="Keywords">end</span>
+            i <span class="Operators">+</span><span class="Operators">=</span> <span class="Integer">1</span>
+        <span class="Keywords">end</span>
+
+        <span class="Keywords">if</span> i <span class="Operators">=</span><span class="Operators">=</span> <span class="Special">self</span>.parsers.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span>
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">else</span>
+            cached <span class="Operators">=</span> result
+        <span class="Keywords">end</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// butNot is a parser combinator that takes two parsers, 'p1' and 'p2'.</span>
+<span class="Comment">// It returns a parser that succeeds if 'p1' matches and 'p2' does not, or</span>
+<span class="Comment">// 'p1' matches and the matched text is longer that p2's.</span>
+<span class="Comment">// Useful for things like: butnot(IdentifierName, ReservedWord)</span>
+<span class="Entities2">class</span> <span class="className">butNot</span><span class="Pars">(</span>p1<span class="Pars">,</span>p2<span class="Pars">)</span>
+    p1 <span class="Operators">=</span> p1
+    p2 <span class="Operators">=</span> p2
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        <span class="Special">self</span>.p1 <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.p1<span class="Pars">)</span>
+        <span class="Special">self</span>.p2 <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.p2<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">butNot </span><span class="Entities1">$self</span><span class="DoubleString">.p1 </span><span class="Entities1">$self</span><span class="DoubleString">.p2</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        br <span class="Operators">=</span> <span class="Special">self</span>.p2.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+
+        <span class="Keywords">if</span> <span class="Logic">not</span> br
+            cached <span class="Operators">=</span> <span class="Special">self</span>.p1.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+        <span class="Keywords">else</span>
+            ar <span class="Operators">=</span> <span class="Special">self</span>.p1.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+            <span class="Keywords">if</span> ar
+                <span class="Keywords">if</span> ar<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span> <span class="Operators">&gt;</span> br<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span>
+                    cached <span class="Operators">=</span> ar
+                <span class="Keywords">else</span>
+                    cached <span class="Operators">=</span> <span class="Special">false</span>
+                <span class="Keywords">end</span>
+            <span class="Keywords">else</span>
+                cached <span class="Operators">=</span> <span class="Special">false</span>
+            <span class="Keywords">end</span>
+        <span class="Keywords">end</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Difference is a parser combinator that takes two parsers, 'p1' and 'p2'.</span>
+<span class="Comment">// It returns a parser that succeeds if 'p1' matches and 'p2' does not. If</span>
+<span class="Comment">// both match then if p2's matched text is shorter than p1's it is successfull.</span>
+<span class="Entities2">class</span> <span class="className">Difference</span><span class="Pars">(</span>p1<span class="Pars">,</span>p2<span class="Pars">)</span>
+    p1 <span class="Operators">=</span> p1
+    p2 <span class="Operators">=</span> p2
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        <span class="Special">self</span>.p1 <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.p1<span class="Pars">)</span>
+        <span class="Special">self</span>.p2 <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.p2<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Difference </span><span class="Entities1">$self</span><span class="DoubleString">.p1 </span><span class="Entities1">$self</span><span class="DoubleString">.p2</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        br <span class="Operators">=</span> <span class="Special">self</span>.p2.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+        <span class="Keywords">if</span> <span class="Logic">not</span> br
+            cached <span class="Operators">=</span> <span class="Special">self</span>.p1.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+        <span class="Keywords">else</span>
+            ar <span class="Operators">=</span> <span class="Special">self</span>.p1.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+            <span class="Keywords">if</span> ar<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span> <span class="Operators">&gt;</span><span class="Operators">=</span> br<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>.<span class="Keywords2">len</span><span class="Pars">(</span><span class="Pars">)</span>
+                cached <span class="Operators">=</span> br
+            <span class="Keywords">else</span>
+                cached <span class="Operators">=</span> ar
+            <span class="Keywords">end</span>
+        <span class="Keywords">end</span>
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Xor is a parser combinator that takes two parsers, 'p1' and 'p2'.</span>
+<span class="Comment">// It returns a parser that succeeds if 'p1' or 'p2' match but fails if</span>
+<span class="Comment">// they both match.</span>
+<span class="Entities2">class</span> <span class="className">Xor</span><span class="Pars">(</span>p1<span class="Pars">,</span> p2<span class="Pars">)</span>
+    p1 <span class="Operators">=</span> p1
+    p2 <span class="Operators">=</span> p2
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        <span class="Special">self</span>.p1 <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.p1<span class="Pars">)</span>
+        <span class="Special">self</span>.p2 <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.p2<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Xor </span><span class="Entities1">$self</span><span class="DoubleString">.p1 </span><span class="Entities1">$self</span><span class="DoubleString">.p2</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        ar <span class="Operators">=</span> <span class="Special">self</span>.p1.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+        br <span class="Operators">=</span> <span class="Special">self</span>.p2.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+        <span class="Keywords">if</span> ar <span class="Logic">and</span> br
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">else</span>
+            <span class="Keywords">if</span> ar
+                cached <span class="Operators">=</span> ar
+            <span class="Keywords">elif</span> br
+                cached <span class="Operators">=</span> br
+            <span class="Keywords">else</span>
+                cached <span class="Operators">=</span> <span class="Special">false</span>
+            <span class="Keywords">end</span>
+        <span class="Keywords">end</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Repeat0 is a parser combinator that takes one parser.</span>
+<span class="Comment">// It returns a parser that looks for zero or more matches of the original parser.</span>
+<span class="Entities2">class</span> <span class="className">Repeat0</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    parser <span class="Operators">=</span> p
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        <span class="Special">self</span>.parser <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.parser<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Repeat0 </span><span class="Entities1">$self</span><span class="DoubleString">.parser</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        ast <span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+        matched <span class="Operators">=</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+
+        <span class="Keywords">while</span> result <span class="Operators">=</span> <span class="Special">self</span>.parser.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+            ast <span class="Operators">+</span><span class="Operators">=</span> <span class="Pars">[</span>result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span><span class="Pars">]</span><span class="Pars">]</span>
+            matched <span class="Operators">+</span><span class="Operators">=</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>
+            <span class="Keywords">if</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>.index <span class="Operators">=</span><span class="Operators">=</span> state.index
+                <span class="Keywords">break</span>
+            <span class="Keywords">end</span>
+            state <span class="Operators">=</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>
+        <span class="Keywords">end</span>
+
+        cached <span class="Operators">=</span> make_result<span class="Pars">(</span>state<span class="Pars">,</span> matched<span class="Pars">,</span> ast<span class="Pars">)</span>
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Repeat1 is a parser combinator that takes one parser.</span>
+<span class="Comment">// It returns a parser that looks for one or more matches</span>
+<span class="Comment">// of the original parser.</span>
+<span class="Entities2">class</span> <span class="className">Repeat1</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    parser <span class="Operators">=</span> p
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        <span class="Special">self</span>.parser <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.parser<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Repeat1 </span><span class="Entities1">$self</span><span class="DoubleString">.parser</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        ast <span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+        matched <span class="Operators">=</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+        result <span class="Operators">=</span> <span class="Special">self</span>.parser.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+        <span class="Keywords">if</span> <span class="Logic">not</span> result
+            cached <span class="Operators">=</span> <span class="Special">false</span>
+        <span class="Keywords">else</span>
+            <span class="Keywords">while</span> result
+                ast <span class="Operators">+</span><span class="Operators">=</span> <span class="Pars">[</span>result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span><span class="Pars">]</span><span class="Pars">]</span>
+                matched <span class="Operators">+</span><span class="Operators">=</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">matched</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>
+                <span class="Keywords">if</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>.index <span class="Operators">=</span><span class="Operators">=</span> state.index
+                    <span class="Keywords">break</span>
+                <span class="Keywords">end</span>
+                state <span class="Operators">=</span> result<span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">remaining</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>
+                result <span class="Operators">=</span> <span class="Special">self</span>.parser.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+            <span class="Keywords">end</span>
+        <span class="Keywords">end</span>
+
+        cached <span class="Operators">=</span> make_result<span class="Pars">(</span>state<span class="Pars">,</span> matched<span class="Pars">,</span> ast<span class="Pars">)</span>
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Optional is a parser combinator that takes one parser.</span>
+<span class="Comment">// It returns a parser that matches zero or one matches of the original parser.</span>
+<span class="Entities2">class</span> <span class="className">Optional</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    parser <span class="Operators">=</span> p
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        <span class="Special">self</span>.parser <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.parser<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Optional </span><span class="Entities1">$self</span><span class="DoubleString">.parser</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        r <span class="Operators">=</span> <span class="Special">self</span>.parser.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+        cached <span class="Operators">=</span> r <span class="Logic">or</span> make_result<span class="Pars">(</span>state<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="Special">false</span><span class="Pars">)</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Semantic allows attaching of a function anywhere in the grammer.</span>
+<span class="Comment">// If the function returns true then parse succeeds otherwise it fails.</span>
+<span class="Comment">// Can be used for testing if a symbol is in the symbol table, etc.</span>
+<span class="Entities2">class</span> <span class="className">Semantic</span><span class="Pars">(</span>f<span class="Pars">)</span>
+    f <span class="Operators">=</span> f
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Semantic </span><span class="Entities1">$self</span><span class="DoubleString">.f</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        cached <span class="Operators">=</span> <span class="Special">self</span>.f<span class="Pars">(</span><span class="Pars">)</span> <span class="Operators">?</span> make_result<span class="Pars">(</span>state<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="Special">nil</span><span class="Pars">)</span> <span class="Operators">:</span> <span class="Special">false</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// The And predicate asserts that a certain conditional</span>
+<span class="Comment">// syntax is satisfied before evaluating another production. Eg:</span>
+<span class="Comment">// Seq(And(&quot;0&quot;), oct_p)</span>
+<span class="Comment">// (if a leading zero, then parse octal)</span>
+<span class="Comment">// It succeeds if 'p' succeeds and fails if 'p' fails. It never</span>
+<span class="Comment">// consume any input however, and doesn't put anything in the resulting</span>
+<span class="Comment">// AST.</span>
+<span class="Entities2">class</span> <span class="className">And</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    parser <span class="Operators">=</span> p
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        <span class="Special">self</span>.parser <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.parser<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">And </span><span class="Entities1">$self</span><span class="DoubleString">.parser</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        r <span class="Operators">=</span> <span class="Special">self</span>.parser.parse<span class="Pars">(</span>state<span class="Pars">)</span>
+	    cached <span class="Operators">=</span> r <span class="Operators">?</span> make_result<span class="Pars">(</span>state<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="Special">nil</span><span class="Pars">)</span> <span class="Operators">:</span> <span class="Special">false</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="Comment">// Not is the opposite of And. It fails if 'p' succeeds and succeeds if</span>
+<span class="Comment">// 'p' fails. It never consumes any input. This combined with 'and' can</span>
+<span class="Comment">// be used for 'lookahead' and disambiguation of cases.</span>
+<span class="Comment">//</span>
+<span class="Comment">// Compare:</span>
+<span class="Comment">// Seq(&quot;a&quot;,Choice(&quot;+&quot;,&quot;++&quot;),&quot;b&quot;)</span>
+<span class="Comment">//   parses a+b</span>
+<span class="Comment">//   but not a++b because the + matches the first part and peg's don't</span>
+<span class="Comment">//   backtrack to other choice options if they succeed but later things fail.</span>
+<span class="Comment">//</span>
+<span class="Comment">// Seq(&quot;a&quot;,Choice(Seq(&quot;+&quot;, Not(&quot;+&quot;)),&quot;++&quot;),&quot;b&quot;)</span>
+<span class="Comment">//    parses a+b</span>
+<span class="Comment">//    parses a++b</span>
+<span class="Comment">//</span>
+<span class="Entities2">class</span> <span class="className">Not</span><span class="Pars">(</span>p<span class="Pars">)</span>
+    parser <span class="Operators">=</span> p
+    pid <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Keywords">init</span>
+        <span class="Keywords2">global</span> parser_id
+        <span class="Special">self</span>.pid <span class="Operators">=</span> <span class="Operators">+</span><span class="Operators">+</span>parser_id
+        <span class="Special">self</span>.parser <span class="Operators">=</span> toParser<span class="Pars">(</span><span class="Special">self</span>.parser<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">toString</span><span class="Pars">(</span><span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">Not </span><span class="Entities1">$self</span><span class="DoubleString">.parser</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span>state<span class="Pars">)</span>
+        savedState <span class="Operators">=</span> state
+        cached <span class="Operators">=</span> savedState.getCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">)</span>
+        <span class="Keywords">if</span> cached
+            <span class="Keywords2">return</span> cached
+        <span class="Keywords">end</span>
+
+        <span class="Keywords">if</span> cached <span class="Operators">=</span><span class="Operators">=</span> <span class="Special">self</span>.parser.parse<span class="Pars">(</span>state<span class="Pars">)</span><span class="Operators">:</span>  make_result<span class="Pars">(</span>state<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="Special">nil</span><span class="Pars">)</span>
+        <span class="Comment">// cached == self.parser.parse(state) ? false : make_result(state, &quot;&quot;, nil)</span>
+
+        savedState.putCached<span class="Pars">(</span><span class="Special">self</span>.pid<span class="Pars">,</span> cached<span class="Pars">)</span>
+        <span class="Keywords2">return</span> cached
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="BlockComment">/*</span><span class="BlockComment">
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">                            MAIN PROGRAMM
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">*/</span>
+<span class="Entities2">class</span> <span class="className">Forward</span><span class="Pars">(</span><span class="Pars">)</span>
+    fwd <span class="Operators">=</span> <span class="Special">nil</span>
+
+    <span class="Entities2">function</span> <span class="funcName">set</span><span class="Pars">(</span>p<span class="Pars">)</span>
+        <span class="Special">self</span>.fwd <span class="Operators">=</span> p
+    <span class="Keywords">end</span>
+
+    <span class="Entities2">function</span> <span class="funcName">parse</span><span class="Pars">(</span> text <span class="Pars">)</span>
+        <span class="Keywords2">return</span> <span class="Special">self</span>.fwd.parse<span class="Pars">(</span>text<span class="Pars">)</span>
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+<span class="BlockComment">/*</span><span class="BlockComment">
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">                            MAIN PROGRAMM
+</span><span class="BlockComment">================================================================================
+</span><span class="BlockComment">*/</span>
+
+<span class="Entities2">function</span> <span class="funcName">makeHeader</span><span class="Pars">(</span>title<span class="Pars">,</span>lev<span class="Pars">)</span>
+    <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">&lt;h</span><span class="Entities1">$lev</span><span class="DoubleString">&gt;</span><span class="Entities1">$title</span><span class="DoubleString">&lt;/h</span><span class="Entities1">$lev</span><span class="DoubleString">&gt;\n</span><span class="DoubleString">&quot;</span>
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">makeH1</span><span class="Pars">(</span>ast<span class="Pars">)</span>
+    res <span class="Operators">=</span> joinStr<span class="Pars">(</span>ast<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords2">return</span> makeHeader<span class="Pars">(</span>res<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">1</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">makeH2</span><span class="Pars">(</span>ast<span class="Pars">)</span>
+    res <span class="Operators">=</span> joinStr<span class="Pars">(</span>ast<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords2">return</span> makeHeader<span class="Pars">(</span>res<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">2</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">makeH3</span><span class="Pars">(</span>ast<span class="Pars">)</span>
+    res <span class="Operators">=</span> joinStr<span class="Pars">(</span>ast<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords2">return</span> makeHeader<span class="Pars">(</span>res<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">3</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">makeH4</span><span class="Pars">(</span>ast<span class="Pars">)</span>
+    res <span class="Operators">=</span> joinStr<span class="Pars">(</span>ast<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords2">return</span> makeHeader<span class="Pars">(</span>res<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">4</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">makeText</span><span class="Pars">(</span>ast<span class="Pars">)</span>
+    res <span class="Operators">=</span> joinStr<span class="Pars">(</span>ast<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords2">return</span> res
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">makePara</span><span class="Pars">(</span>ast<span class="Pars">)</span>
+    res <span class="Operators">=</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">for</span> el <span class="Logic">in</span> ast
+        res <span class="Operators">=</span> joinStr<span class="Pars">(</span>el<span class="Pars">,</span><span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords">if</span> res <span class="Operators">=</span><span class="Operators">=</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+        <span class="Keywords2">return</span> <span class="Special">nil</span>
+    <span class="Keywords">else</span>
+        <span class="Keywords2">return</span> <span class="Operators">@</span><span class="DoubleString">&quot;</span><span class="DoubleString">&lt;p&gt;</span><span class="Entities1">$res</span><span class="DoubleString">&lt;/p&gt;\n</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">end</span>
+<span class="Keywords">end</span>
+
+mystring <span class="Operators">=</span> <span class="SingleString">'</span><span class="SingleString">
+</span><span class="SingleString">Falcon is...an Open Source, simple, fast and powerful programming language.
+</span><span class="SingleString">
+</span><span class="SingleString">Easy to learn and to feel comfortable with, and a scripting
+</span><span class="SingleString">engine ready to empower mission-critical multithreaded applications.
+</span><span class="SingleString">
+</span><span class="SingleString">=First header=
+</span><span class="SingleString">
+</span><span class="SingleString">Falcon provides six integrated programming paradigms: procedural,
+</span><span class="SingleString">object oriented, prototype oriented, functional, tabular and message oriented.
+</span><span class="SingleString">
+</span><span class="SingleString">And you dont have to master all of them;
+</span><span class="SingleString">you just need to pick the ingredients you prefer,
+</span><span class="SingleString">and let the code to follow your inspiration.
+</span><span class="SingleString">
+</span><span class="SingleString">==Second header==
+</span><span class="SingleString">
+</span><span class="SingleString">Another media is following Falcon from now on: ComputerWorld Australia has
+</span><span class="SingleString">published a rich interview with Falcon author on its site.
+</span><span class="SingleString">
+</span><span class="SingleString">===Third header===
+</span><span class="SingleString">
+</span><span class="SingleString">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+</span><span class="SingleString">tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+</span><span class="SingleString">quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+</span><span class="SingleString">consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse!!!
+</span><span class="SingleString">
+</span><span class="SingleString">HERE IT IS
+</span><span class="SingleString">cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
+</span><span class="SingleString">non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+</span><span class="SingleString">'</span>
+
+test <span class="Operators">=</span> ps<span class="Pars">(</span>mystring<span class="Pars">)</span>
+
+<span class="Comment">// New line</span>
+W_nl <span class="Operators">=</span> Action<span class="Pars">(</span> Choice<span class="Pars">(</span><span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">\r\n</span><span class="DoubleString">&quot;</span> <span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">\r</span><span class="DoubleString">&quot;</span> <span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">\n</span><span class="DoubleString">&quot;</span> <span class="Pars">]</span><span class="Pars">)</span><span class="Pars">,</span> <span class="Pars">{</span> x <span class="Operators">=</span><span class="Operators">&gt;</span> <span class="DoubleString">&quot;</span><span class="DoubleString">\n</span><span class="DoubleString">&quot;</span><span class="Pars">}</span> <span class="Pars">)</span>
+
+<span class="Comment">// White spaces</span>
+W_ws <span class="Operators">=</span> Choice<span class="Pars">(</span><span class="Pars">[</span> <span class="SingleString">'</span><span class="SingleString"> </span><span class="SingleString">'</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">\t</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> W_nl <span class="Pars">]</span> <span class="Pars">)</span>
+
+<span class="Comment">// Heading1</span>
+W_head1 <span class="Operators">=</span> Seq<span class="Pars">(</span> <span class="Pars">[</span>expect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">=</span><span class="DoubleString">&quot;</span><span class="Pars">)</span><span class="Pars">,</span> Action<span class="Pars">(</span>Repeat1<span class="Pars">(</span> Negate<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">=</span><span class="DoubleString">&quot;</span><span class="Pars">)</span> <span class="Pars">)</span><span class="Pars">,</span> makeH1<span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">=</span><span class="DoubleString">&quot;</span><span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span>W_nl<span class="Pars">)</span><span class="Pars">]</span>  <span class="Pars">)</span>
+
+<span class="Comment">// Heading2</span>
+W_head2 <span class="Operators">=</span> Seq<span class="Pars">(</span> <span class="Pars">[</span>expect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">==</span><span class="DoubleString">&quot;</span><span class="Pars">)</span><span class="Pars">,</span> Action<span class="Pars">(</span>Repeat1<span class="Pars">(</span> Negate<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">=</span><span class="DoubleString">&quot;</span><span class="Pars">)</span> <span class="Pars">)</span><span class="Pars">,</span> makeH2<span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">==</span><span class="DoubleString">&quot;</span><span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span>W_nl<span class="Pars">)</span><span class="Pars">]</span>  <span class="Pars">)</span>
+
+<span class="Comment">// Heading3</span>
+W_head3 <span class="Operators">=</span> Seq<span class="Pars">(</span> <span class="Pars">[</span>expect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">===</span><span class="DoubleString">&quot;</span><span class="Pars">)</span><span class="Pars">,</span> Action<span class="Pars">(</span>Repeat1<span class="Pars">(</span> Negate<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">=</span><span class="DoubleString">&quot;</span><span class="Pars">)</span> <span class="Pars">)</span><span class="Pars">,</span> makeH3<span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">===</span><span class="DoubleString">&quot;</span><span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span>W_nl<span class="Pars">)</span><span class="Pars">]</span>  <span class="Pars">)</span>
+
+<span class="Comment">// Heading4</span>
+W_head4 <span class="Operators">=</span> Seq<span class="Pars">(</span> <span class="Pars">[</span>expect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">====</span><span class="DoubleString">&quot;</span><span class="Pars">)</span><span class="Pars">,</span> Action<span class="Pars">(</span>Repeat1<span class="Pars">(</span> Negate<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">=</span><span class="DoubleString">&quot;</span><span class="Pars">)</span> <span class="Pars">)</span><span class="Pars">,</span> makeH4<span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">====</span><span class="DoubleString">&quot;</span><span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span>W_nl<span class="Pars">)</span><span class="Pars">]</span>  <span class="Pars">)</span>
+
+<span class="Comment">// Headings</span>
+W_heading <span class="Operators">=</span> Choice<span class="Pars">(</span><span class="Pars">[</span>W_head1<span class="Pars">,</span>W_head2<span class="Pars">,</span>W_head3<span class="Pars">,</span>W_head4<span class="Pars">]</span><span class="Pars">)</span>
+
+<span class="Comment">// Text</span>
+W_text <span class="Operators">=</span> Action<span class="Pars">(</span> Repeat1<span class="Pars">(</span> Negate<span class="Pars">(</span>Choice<span class="Pars">(</span><span class="Pars">[</span>W_nl<span class="Pars">,</span> W_heading<span class="Pars">]</span><span class="Pars">)</span> <span class="Pars">)</span><span class="Pars">)</span> <span class="Pars">,</span> makeText<span class="Pars">)</span>
+
+<span class="Comment">// Blank line</span>
+W_blank <span class="Operators">=</span> Seq<span class="Pars">(</span><span class="Pars">[</span>Repeat0<span class="Pars">(</span>W_ws<span class="Pars">)</span><span class="Pars">,</span> W_nl<span class="Pars">]</span><span class="Pars">)</span>
+
+<span class="Comment">// Paragraphs</span>
+W_lineOfText <span class="Operators">=</span> Action<span class="Pars">(</span> Seq<span class="Pars">(</span> <span class="Pars">[</span>W_text<span class="Pars">,</span> expect<span class="Pars">(</span>W_nl<span class="Pars">)</span><span class="Pars">]</span> <span class="Pars">)</span> <span class="Pars">,</span> <span class="Pars">{</span> x <span class="Operators">=</span><span class="Operators">&gt;</span> joinStr<span class="Pars">(</span>x<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">\n</span><span class="DoubleString">&quot;</span><span class="Pars">)</span> <span class="Pars">}</span><span class="Pars">)</span>
+<span class="Comment">//W_para = Action( Seq( [ Repeat1( W_lineOfText ), expect(Repeat0(W_nl))] ) , makePara)</span>
+W_para <span class="Operators">=</span> Action<span class="Pars">(</span> Seq<span class="Pars">(</span> <span class="Pars">[</span> Repeat1<span class="Pars">(</span> W_lineOfText <span class="Pars">)</span><span class="Pars">,</span> expect<span class="Pars">(</span>Repeat1<span class="Pars">(</span>W_nl<span class="Pars">)</span><span class="Pars">)</span><span class="Pars">]</span> <span class="Pars">)</span> <span class="Pars">,</span> makePara<span class="Pars">)</span>
+
+W_run <span class="Operators">=</span> Repeat0<span class="Pars">(</span> Choice<span class="Pars">(</span><span class="Pars">[</span>W_heading<span class="Pars">,</span> W_nl<span class="Pars">,</span> W_para<span class="Pars">,</span> expect<span class="Pars">(</span>W_nl<span class="Pars">)</span><span class="Pars">]</span><span class="Pars">)</span> <span class="Pars">)</span>
+
+myres <span class="Operators">=</span> W_run.parse<span class="Pars">(</span>test<span class="Pars">)</span><span class="Pars">[</span><span class="DoubleString">&quot;</span><span class="DoubleString">ast</span><span class="DoubleString">&quot;</span><span class="Pars">]</span>
+<span class="Comment">// prettyPrint(W_run, test)</span>
+
+<span class="Entities2">function</span> <span class="funcName">ppp</span><span class="Pars">(</span>ar<span class="Pars">)</span>
+    res <span class="Operators">=</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span>
+    <span class="Keywords">for</span> el <span class="Logic">in</span> ar
+        <span class="Keywords">if</span> typeOf<span class="Pars">(</span>el<span class="Pars">)</span> <span class="Operators">=</span><span class="Operators">=</span> <span class="Integer">9</span>
+            el <span class="Operators">=</span> joinStr<span class="Pars">(</span>el<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+        <span class="Keywords">end</span>
+        res <span class="Operators">+</span><span class="Operators">=</span> el
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> res
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">escape</span><span class="Pars">(</span>s<span class="Pars">,</span> quote<span class="Pars">)</span>
+    <span class="BlockComment">/*</span><span class="BlockComment">Replace special characters &quot;&amp;&quot;, &quot;&lt;&quot; and &quot;&gt;&quot; to HTML-safe sequences.
+</span><span class="BlockComment">    If the optional flag quote is true, the quotation mark character (&quot;)
+</span><span class="BlockComment">    is also translated.</span><span class="BlockComment">*/</span>
+    s <span class="Operators">=</span> strReplace<span class="Pars">(</span> s<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&amp;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&amp;amp;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span> <span class="Comment">// Must be done first!</span>
+    s <span class="Operators">=</span> strReplace<span class="Pars">(</span> s<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&lt;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&amp;lt;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    s <span class="Operators">=</span> strReplace<span class="Pars">(</span> s<span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&gt;</span><span class="DoubleString">&quot;</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&amp;gt;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords">if</span> quote <span class="Operators">:</span> s <span class="Operators">=</span> strReplace<span class="Pars">(</span> s<span class="Pars">,</span><span class="SingleString">'</span><span class="SingleString">&quot;</span><span class="SingleString">'</span><span class="Pars">,</span> <span class="DoubleString">&quot;</span><span class="DoubleString">&amp;quot;</span><span class="DoubleString">&quot;</span><span class="Pars">)</span>
+    <span class="Keywords2">return</span> s
+<span class="Keywords">end</span>
+
+<span class="Entities2">function</span> <span class="funcName">pprint</span><span class="Pars">(</span>lst<span class="Pars">)</span>
+    res <span class="Operators">=</span> <span class="Pars">[</span><span class="Pars">]</span>
+
+    <span class="Keywords">for</span> elem <span class="Logic">in</span> lst
+        <span class="Keywords">if</span> elem.typeId<span class="Pars">(</span><span class="Pars">)</span> <span class="Operators">=</span><span class="Operators">=</span> <span class="Types">ArrayType</span>
+            res <span class="Operators">+</span><span class="Operators">=</span> pprint<span class="Pars">(</span>elem<span class="Pars">)</span>
+        <span class="Keywords">else</span>
+            res <span class="Operators">+</span><span class="Operators">=</span> elem
+        <span class="Keywords">end</span>
+    <span class="Keywords">end</span>
+    <span class="Keywords2">return</span> <span class="DoubleString">&quot;</span><span class="DoubleString">[</span><span class="DoubleString">&quot;</span> <span class="Operators">+</span> <span class="DoubleString">&quot;</span><span class="DoubleString">, </span><span class="DoubleString">&quot;</span>.merge<span class="Pars">(</span>res<span class="Pars">)</span> <span class="Operators">+</span> <span class="DoubleString">&quot;</span><span class="DoubleString">]</span><span class="DoubleString">&quot;</span>
+<span class="Keywords">end</span>
+
+prarr<span class="Pars">(</span>myres<span class="Pars">)</span>
+<span class="Comment">//pprint(myres)</span>          </pre>
+        </div>
+   </body>
+  </html>

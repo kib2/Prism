@@ -1,0 +1,43 @@
+  <html>
+   <head>
+       <link rel="Stylesheet" type="text/css" href="main.css" />
+   </head>
+   <body>
+        <div class="default">
+          <pre class="code">
+<span class="Shebang">#!/usr/bin/env clj
+</span>
+<span class="Comment">; Define and load all the libraries into our namespace that we want all binds for:</span>
+<span class="Pars">(</span><span class="Keywords3">def</span> <span class="Keywords1">*supported-libraries*</span> <span class="Pars">[</span><span class="Keywords2">'clojure.core</span> <span class="Keywords2">'clojure.contrib.duck-streams</span> <span class="Keywords2">'clojure.contrib.seq-utils</span> <span class="Keywords2">'clojure.contrib.str-utils</span> <span class="Keywords2">'clojure.contrib.repl-utils</span><span class="Pars">]</span><span class="Pars">)</span>
+<span class="Pars">(</span><span class="Keywords2">doseq </span><span class="Pars">[</span>k <span class="Keywords1">*supported-libraries*</span><span class="Pars">]</span> <span class="Pars">(</span><span class="Keywords2">use </span>k<span class="Pars">)</span><span class="Pars">)</span>
+          
+          
+<span class="Pars">(</span><span class="Keywords3">defn</span> print<span class="Operators">-</span>public<span class="Operators">-</span>binds
+  <span class="DoubleString">&quot;</span><span class="DoubleString">Prints all binds defined in library $s.</span><span class="DoubleString">&quot;</span>
+  <span class="Pars">[</span>s<span class="Pars">]</span>
+  <span class="Pars">(</span><span class="Keywords2">doseq </span><span class="Pars">[</span>k <span class="Pars">(</span><span class="Keywords2">keys </span><span class="Pars">(</span>ns<span class="Operators">-</span>publics s<span class="Pars">)</span><span class="Pars">)</span><span class="Pars">]</span> <span class="Pars">(</span><span class="Keywords2">println </span>k<span class="Pars">)</span><span class="Pars">)</span><span class="Pars">)</span>
+
+
+<span class="Pars">(</span><span class="Keywords2">doseq </span><span class="Pars">[</span>s <span class="Keywords1">*supported-libraries*</span><span class="Pars">]</span> <span class="Pars">(</span>print<span class="Operators">-</span>public<span class="Operators">-</span>binds s<span class="Pars">)</span><span class="Pars">)</span>
+
+<span class="Pars">(</span><span class="Keywords3">defn</span> vrange <span class="Pars">[</span>n<span class="Pars">]</span>
+  <span class="DoubleString">&quot;</span><span class="DoubleString">A quicksort algorithm using a variadic function:
+</span><span class="DoubleString">  http://en.wikipedia.org/wiki/Variadic_function
+</span><span class="DoubleString">  like this.</span><span class="DoubleString">&quot;</span>
+  <span class="Pars">(</span><span class="Keywords2">loop </span><span class="Pars">[</span>i <span class="Number">0</span> v <span class="Pars">[</span><span class="Pars">]</span><span class="Pars">]</span>
+    <span class="Pars">(</span><span class="Keywords2">if </span><span class="Pars">(</span><span class="Operators">&lt;</span> i n<span class="Pars">)</span>
+      <span class="Pars">(</span><span class="Keywords2">recur </span><span class="Pars">(</span><span class="Keywords2">inc </span>i<span class="Pars">)</span> <span class="Pars">(</span><span class="Keywords2">conj </span>v i<span class="Pars">)</span><span class="Pars">)</span>
+      v<span class="Pars">)</span><span class="Pars">)</span><span class="Pars">)</span>
+
+<span class="Pars">(</span><span class="Keywords2">use </span>'<span class="Pars">[</span>clojure<span class="Operators">.</span>contrib<span class="Operators">.</span>seq<span class="Operators">-</span>utils <span class="Keywords">:only</span> <span class="Pars">(</span>group<span class="Operators">-</span>by<span class="Pars">)</span><span class="Pars">]</span><span class="Pars">)</span>
+ 
+<span class="Pars">(</span><span class="Keywords3">defstruct</span> employee <span class="Keywords">:Name</span> <span class="Keywords">:ID</span> <span class="Keywords">:Salary</span> <span class="Keywords">:Department</span><span class="Pars">)</span>
+ 
+<span class="Pars">(</span><span class="Keywords3">def</span> data
+     <span class="Pars">(</span><span class="Operators">-</span><span class="Operators">&gt;</span><span class="Operators">&gt;</span> '<span class="Pars">(</span><span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">Tyler Bennett</span><span class="DoubleString">&quot;</span> E10297 <span class="Number">32000</span> D101<span class="Pars">)</span>
+            <span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">John Rappl</span><span class="DoubleString">&quot;</span> E21437 <span class="Number">47000</span> D050<span class="Pars">)</span>
+            <span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">George Woltman</span><span class="DoubleString">&quot;</span> E00127 <span class="Number">53500</span> D101<span class="Pars">)</span>
+            <span class="Pars">(</span><span class="DoubleString">&quot;</span><span class="DoubleString">Adam Smith</span><span class="DoubleString">&quot;</span> E63535 <span class="Number">18000</span> D202<span class="Pars">)</span>          </pre>
+        </div>
+   </body>
+  </html>
