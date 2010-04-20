@@ -20,6 +20,11 @@ At the moment, here are the supported grammars :
 
 And you can also add your ones easily.
 
+## See it in action
+
+You can jump to [Prism Pastebin](http://prism-pastebin.heroku.com/) to give
+you an idea about it.
+
 ## Usage
 
 First, you'll need an HtmlFormatter instance.
