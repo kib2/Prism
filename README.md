@@ -25,6 +25,8 @@ And you can also add your ones easily.
 You can jump to [Prism Pastebin](http://prism-pastebin.heroku.com/) to give
 you an idea about it.
 
+I also use Prism on a little [blog](http://prism-kib2.heroku.com/). 
+
 ## Usage
 
 First, you'll need an HtmlFormatter instance.
