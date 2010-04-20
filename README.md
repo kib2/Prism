@@ -34,12 +34,17 @@ There are 3 methods avaible with your HL instance:
 * from_list(code_in_array)
 * from_file(in_file, out_file)
 
-
-See and launch the 'test1.rb' file, then go into the 'output_test_files' 
-directory to see your generated 'out.html' file.
+There are 3 test files 'test1.rb' to 'test3.rb'. Run them, then go into 
+the 'output_test_files' directory to see your generated html files.
 
 If you want view other themes, just edit 'main.css' and change the theme
 accordingly to your need. (It is hardcoded atm)
+
+## HELP
+
+I'll greatly appreciate any help on this project, just leave me a mail at:
+
+  ['k','i','b','l','e','u','r','.','c','h','r','i','s','t','o','p','h','e','@','gmail.com'].join('')
 
 ## TODO & IDEAS
 
