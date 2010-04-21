@@ -54,7 +54,7 @@ module RubyLang
   def Ruby_dic
     {
   :ruby_root => [
-      {:pattern => '__END__', :style => "Special", :action => "ToEnd", :transit => "BlockComment"},
+      {:pattern => '\b__END__\b', :style => "Special", :action => "ToEnd", :transit => "BlockComment"},
       {:pattern => '\b[A-Z0-9_]+\b', :style => "Special"},
       {:pattern => '(?<!\\\\)"', :style => "DoubleString", :action => "DoubleString"},
       {:pattern => "(?<!')'", :style => "SingleString", :action => "SingleString"},
@@ -62,11 +62,14 @@ module RubyLang
       {:pattern => '(%)([\[(!{])', :style => "Operators", :transit => "SingleString", :action => "gdsString", :callback => 'cb_gds'},
       {:pattern => '(%)[Qqx]([\[(!{])', :style => "Operators", :transit => "SingleString", :action => "gdsString", :callback => 'cb_gds'},
       # Here Documents
-      {:pattern => /(<<[-]?)([a-zA-Z0-9_"`']+)/, :style => "Operators",
-       :action  => "hdString", :callback => 'cb_hd', :transit => "SingleString"},
+      {:pattern => /(<<[-]?)([a-zA-Z0-9_"`']+)/, :style => "Operators", :action  => "hdString", :callback => 'cb_hd', :transit => "SingleString"},
 
+      # block comments
       {:pattern => '=begin', :style => "BlockComment", :action => "BlockComment"},
-      {:pattern => '(?<!\\\\)\/', :style => "Regex", :action => "regexp"},
+      # Regexps !
+      {:pattern => '(\/[^\n]*\/)([mox]*)?', :style => ["Regex","RegexOptions"]},
+      {:pattern => '(%r)(\{(?:\}|#\{[A-Za-z0-9]+\}|[^}])*\})', :style => ["RegexOptions","Regex"]},
+      # Others
       {:pattern => 'attr_accessor|attr_reader', :style => "Entities2"},
       {:pattern => '#!\/usr\/bin\/ruby\s*', :style => "Shebang"},
       {:pattern => '#.*', :style => "Comment"},
@@ -88,14 +91,28 @@ module RubyLang
     ## Double string state
   :DoubleString => [
       {:pattern => '\#\{.*?\}', :style => "Entities"},
-      {:pattern => '\\\\\d', :style => "Entities"},
-      {:pattern => '(?<!\\\\)"', :style => "DoubleString", :action => "#pop"}
+      {:pattern => "\\\\", :style => "SingleString", :action => "Escape1"},
+      {:pattern => '"', :style => "DoubleString", :action => "#pop"}
+      #{:pattern => '(?<!\\\\)"', :style => "DoubleString", :action => "#pop"}
     ],
 
     ## Single string state
   :SingleString => [
-      {:pattern => '\\\d', :style => "Entities"},
-      {:pattern => "(?<!\\\\)'", :style => "SingleString", :action => "#pop"}
+      {:pattern => "\\\\", :style => "SingleString", :action => "Escape2"},
+      {:pattern => "'", :style => "SingleString", :action => "#pop"}
+      #{:pattern => "(?<!\\\\)'", :style => "SingleString", :action => "#pop"}
+    ],
+    
+    ## Double string escape
+  :Escape1 => [
+      {:pattern => '\\"', :style => "SingleString", :action => "#pop"},
+      {:pattern => ".", :style => "SingleString", :action => "#pop"}
+    ],
+    
+    ## Single string escape
+  :Escape2 => [
+      {:pattern => "\\'", :style => "SingleString", :action => "#pop"},
+      {:pattern => ".", :style => "SingleString", :action => "#pop"}
     ],
 
     ## Comment block state
@@ -110,13 +127,13 @@ module RubyLang
       {:pattern => '(?<!\\\\)(\/)([mox]*)?', :style => ["Regex","RegexOptions"], :action => "#pop"},
       {:pattern => '(\\\\\\\\\/)([mox]*)?', :style => ["Regex","RegexOptions"], :action => "#pop"},
       {:pattern => '\#\{.*?\}', :style => "Entities"}
-                      ],
+  ],
 
-    # ToEnd
-    :ToEnd => [],
+  # ToEnd
+  :ToEnd => [],
     
-    # NestedI
-    :NestedI => [{:pattern => '\}', :style => "Pars", :action => "#pop"}],
+  # NestedI (Used inside %Q{...} strings wich can contain #{...} expansions )
+  :NestedI => [{:pattern => '\}', :style => "Pars", :action => "#pop"}],
   }
 
   end
