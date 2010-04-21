@@ -79,7 +79,7 @@ module RubyLang
       {:pattern => '\b(do)\b', :style => "Keywords3"},
       {:pattern => '(:)([A-Za-z][A-Za-z0-9_]*)', :style => ["Operators","Types"]},
       {:pattern => '(@[a-z][A-Za-z0-9_]*)', :style => "Dico"},
-      {:pattern => '[.]|\||\\\\|<|>|=|:|\+|-|\*|\^|\$|\?|\!|%', :style => "Operators"},
+      {:pattern => '[.]|\||\\\\|<|>|=|/|:|\+|-|\*|\^|\$|\?|\!|%', :style => "Operators"},
       {:pattern => ',|;|\[|\]|\(|\)|\{|\}', :style => "Pars"},
       {:pattern => '\b(true|false|nil|self)\b', :style => "Logic"},
       {:pattern => '\b(class)\b(\s+)([a-zA-Z0-9_]+)', :style => ["Entities3","Root","className"]},
