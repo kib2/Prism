@@ -8,21 +8,29 @@
 module RubyLang
 
   # General Delimited Strings Callback
+  # BEWARE THAT :pattern should be a REGEXP !
+  
   def cb_gds(me)
     pattern = me[:reg][2]
 
     if ['[','(','{'].include?(pattern)
-      pattern = {'[' => ']','(' => ')','{' => '}'}[pattern]
+      pattern = {'[' => ']', '(' => ')', '{' => '}'}[pattern]
     end
-    s = Regexp.escape(pattern)
+    s = /[#{Regexp.escape(pattern)}]/
 
-    to_add = [
-            {
-            :pattern   => /\s*#{s}/,
-            :style     => "Operators",
-            :action    => "#pop"
-            }]
-    @allRules[:gdsString] = to_add
+    @allRules[:gdsString] = [
+      {:pattern => /\#\{/, 
+       :style => "Pars",
+       :transit => "Entities", 
+       :action => "NestedI"},
+      
+      {:pattern   => s, # '}'
+       :style     => "Operators",
+       :action    => "#pop"
+      }
+    ]
+    #puts PP.pp(@allRules)
+    #@allRules[:gdsString] = to_add
   end
 
   # Here Documents Callback
@@ -51,8 +59,8 @@ module RubyLang
       {:pattern => '(?<!\\\\)"', :style => "DoubleString", :action => "DoubleString"},
       {:pattern => "(?<!')'", :style => "SingleString", :action => "SingleString"},
       # General Delimited Strings:
-      {:pattern => '(%)([Qqx{\(!\[])', :style => "Operators",
-       :transit => "SingleString", :action => "gdsString", :callback => 'cb_gds'},
+      {:pattern => '(%)([\[(!{])', :style => "Operators", :transit => "SingleString", :action => "gdsString", :callback => 'cb_gds'},
+      {:pattern => '(%)[Qqx]([\[(!{])', :style => "Operators", :transit => "SingleString", :action => "gdsString", :callback => 'cb_gds'},
       # Here Documents
       {:pattern => /(<<[-]?)([a-zA-Z0-9_"`']+)/, :style => "Operators",
        :action  => "hdString", :callback => 'cb_hd', :transit => "SingleString"},
@@ -106,6 +114,9 @@ module RubyLang
 
     # ToEnd
     :ToEnd => [],
+    
+    # NestedI
+    :NestedI => [{:pattern => '\}', :style => "Pars", :action => "#pop"}],
   }
 
   end
