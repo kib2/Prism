@@ -58,7 +58,7 @@ class HL
       @states = [] # will be filled at the end of initialize
       @styles = ['Root']
       @was_transit = false
-
+      @last_tokens = []
       # setting the formatter and loading syntax
       @formatter.parent = self
       load_syntax_def(@language.capitalize)
@@ -108,25 +108,28 @@ class HL
         longest = 0
         match   = false
         style   = nil
+        token = nil
         me = {
            :start => nil, :ends =>  nil, :rule    => nil,
            :match => nil, :style => nil, :pop     => false,
            :push  => nil, :reg   => nil, :transit => nil,
            :callback => nil, :prio => false
              }
-
+        #puts (@states[-1])
         @allRules[(@states[-1]).to_sym].each do |r|
             reg  = r[:pattern]
-            prio = r[:prio]
+            prio = r[:prio] # not used yet
+
             if (m = reg.match(line))
                 m0 = m.begin(0)
                 m1 = m.end(0)
                 # the best rule is the one matchingfirst
                 # or the longest one if 2 rules matches at the samepos
-                if (m0 < lowest or (m0 == lowest and m1 > longest) )
+                if (m0 < lowest or (m0 == lowest and m1 > longest and prio) )
                     match = true
+                    token = m[0]
                     me = updateMatchObject(me,m0,m1,r,m)
-                    # update lowest andlongest
+                    # update lowest and longest match indices
                     lowest  = m0
                     longest = m1
                 end
@@ -134,10 +137,11 @@ class HL
         end
 
         if match
+            @last_tokens << token
             # CALLBACKS rules
             if me[:rule].key?(:callback)
               #self.send(me[:rule][:callback], me[:reg])
-              self.send(me[:rule][:callback], me) #[:reg])
+              self.send(me[:rule][:callback], me)
             end
 
             # "action" is a state change (maybeseveral)
@@ -278,7 +282,7 @@ class HL
     # DIRECT HIGHLIGHTING METHODS
     #
     def from_string(code_in_text)
-      code_in_text.gsub("\r\n", "\n")
+      code_in_text.gsub(/\r\n/, "\n")
       from_list(code_in_text.split("\n"))
     end
 
@@ -287,12 +291,13 @@ class HL
       out = []
       code_in_array.each do |line|
         num_of_lines += 1
-        out << highlightLine(line)
+        out << highlightLine(line.rstrip) # We don't need line endings inside
       end
       out.join("\n")
     end
 
     def from_file(in_file, out_file)
+      puts "Treating file #{in_file}"
       num_of_lines = 0
       header = <<-eos
   <html>
